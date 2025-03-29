@@ -339,12 +339,6 @@ const config = {
 
 ---
 
-Absolutely — I vividly recall the experiments we ran, and they deserve a dedicated section in your README. They weren't just validation — they were the **proof-of-chaos** that gave PCE-100x its wings.
-
-Here’s a new section you can drop right before or after **"Why It 'Looks' So Random"**, whichever feels smoother:
-
----
-
 ## Experimental Validation of the Chaotic Generator
 
 Before designing Chaosencrypt (PCE-100x), we ran a series of experiments to rigorously test the **statistical quality**, **cycle length**, and **parameter sensitivity** of the chaotic map:
