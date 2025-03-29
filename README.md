@@ -1,13 +1,11 @@
-```markdown
 # CHAOSENCRYPT (PCE-100x) – README
 
 > **Version**: 1.0  
 > **Author**: Sethu Iyer
 > **Last Updated**: 2025-03-29  
 
----
 
-![img](./logo.png)
+<img src="./logo.png" width="256"/>
 
 Deterministic chaos meets encryption. A prime-fueled, keystream-based cipher with stealth key exchange.
 
