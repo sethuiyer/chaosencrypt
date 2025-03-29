@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCE-100x - Advanced Prime Chaos Encoder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>PCE-100x: Advanced Prime Chaos Encoder</h1>
+
+    <!-- Global Settings -->
+    <details open class="config-section">
+        <summary><h2>Global Configuration</h2></summary>
+        <div class="config-grid">
+            <div>
+                <label for="precision">Decimal Precision:</label>
+                <select id="precision">
+                    <option value="7">7 (10^7)</option>
+                    <option value="10">10 (10^10)</option>
+                    <option value="12" selected>12 (10^12)</option>
+                    <option value="15">15 (10^15)</option>
+                </select>
+            </div>
+            <div>
+                <label for="primes">Prime Multiplier Sequence (BigInts, comma-sep):</label>
+                <input type="text" id="primes" value="9973">
+                 <small>E.g., 9973, 9941, 9929</small>
+            </div>
+             <div>
+                <label for="shared-secret">Shared Secret (for Dynamic K/MAC - numbers only):</label>
+                <input type="text" id="shared-secret" value="123456789">
+                 <small>Simulation only!</small>
+            </div>
+             <div>
+                <label for="chunk-size">Chunk Size (bytes, 0 for no chunking):</label>
+                <input type="number" id="chunk-size" value="0" min="0">
+            </div>
+        </div>
+    </details>
+
+    <div class="container">
+        <!-- Encryption Section -->
+        <div class="section">
+            <h2>Encrypt Message</h2>
+            <label for="message-input">Message:</label>
+            <textarea id="message-input" rows="3" placeholder="Enter text..."></textarea>
+
+             <details class="config-section inline-details">
+                 <summary>Encryption Options</summary>
+                 <div class="options-group">
+                     <label for="encrypt-k">Base Step Count (k):</label>
+                     <input type="number" id="encrypt-k" value="6" min="1">
+                 </div>
+                 <div class="options-group">
+                     <input type="checkbox" id="use-dynamic-k" name="use-dynamic-k">
+                     <label for="use-dynamic-k">Use Dynamic k (derived per chunk/char)?</label>
+                 </div>
+                 <div class="options-group">
+                     <input type="checkbox" id="use-xor-keystream" name="use-xor-keystream" checked>
+                     <label for="use-xor-keystream">Use Hybrid XOR Keystream Mode?</label>
+                     <small>(Recommended; avoids inverse issues)</small>
+                 </div>
+                  <div class="options-group">
+                     <input type="checkbox" id="include-mac" name="include-mac">
+                     <label for="include-mac">Include Simulated MAC?</label>
+                 </div>
+             </details>
+
+            <button onclick="handleEncrypt()">Encrypt</button>
+
+            <label for="encrypted-output">Encrypted Output (comma-separated BigInts):</label>
+            <textarea id="encrypted-output" rows="5" readonly placeholder="Encrypted sequence..."></textarea>
+            <label for="mac-output">Calculated MAC (if enabled):</label>
+            <input type="text" id="mac-output" readonly>
+        </div>
+
+        <!-- Decryption Section -->
+        <div class="section">
+            <h2>Decrypt Message</h2>
+            <label for="encrypted-input">Encrypted Sequence (comma-separated BigInts):</label>
+            <textarea id="encrypted-input" rows="5" placeholder="Paste sequence..."></textarea>
+            <label for="mac-input">Received MAC (if used):</label>
+            <input type="text" id="mac-input" placeholder="Paste MAC...">
+
+             <details class="config-section inline-details">
+                 <summary>Decryption Options (must match encryption)</summary>
+                  <div class="options-group">
+                     <label for="decrypt-k">Base Step Count (k):</label>
+                     <input type="number" id="decrypt-k" value="6" min="1">
+                 </div>
+                 <div class="options-group">
+                    <input type="checkbox" id="was-dynamic-k" name="was-dynamic-k">
+                     <label for="was-dynamic-k">Was Dynamic k used?</label>
+                 </div>
+                  <div class="options-group">
+                     <input type="checkbox" id="was-xor-keystream" name="was-xor-keystream" checked>
+                     <label for="was-xor-keystream">Was Hybrid XOR Keystream used?</label>
+                 </div>
+                 <div class="options-group">
+                     <input type="checkbox" id="verify-mac-flag" name="verify-mac-flag">
+                     <label for="verify-mac-flag">Verify MAC?</label>
+                 </div>
+            </details>
+
+            <button onclick="handleDecrypt()">Decrypt</button>
+
+            <label for="decrypted-output">Decrypted Message:</label>
+            <textarea id="decrypted-output" rows="3" readonly placeholder="Decrypted text..."></textarea>
+             <label for="mac-verification-output">MAC Verification Result:</label>
+            <input type="text" id="mac-verification-output" readonly>
+        </div>
+    </div>
+
+     <!-- Orbit Break Key Exchange Section -->
+    <div class="container orbit-break-container">
+        <div class="section">
+            <h2>Orbit Break Key Exchange Simulation</h2>
+            <p>Alice detects 'k' when Bob intentionally breaks the predictable chaos pattern.</p>
+            <p><i>(Uses Global Precision/Primes settings)</i></p>
+
+            <div class="config-grid orbit-config">
+                <div>
+                    <label for="orbit-seed">Initial Seed (0 to 1):</label>
+                    <input type="number" id="orbit-seed" value="0.111111111111" step="any" min="0" max="1">
+                     <small>Adjust step based on precision</small>
+                </div>
+                <div>
+                    <label for="orbit-k">Actual Secret 'k' (Sync Steps):</label>
+                    <input type="number" id="orbit-k" value="6" min="1">
+                </div>
+            </div>
+
+            <button onclick="simulateOrbitBreak()">Simulate Key Exchange</button>
+
+            <label>Simulation Log:</label>
+            <div id="orbit-log" class="log-output"></div>
+
+            <label>Orbit Visualization:</label>
+             <div class="canvas-container">
+                <canvas id="orbit-canvas" width="400" height="200"></canvas>
+             </div>
+        </div>
+    </div>
+
+    <!-- Status/Error Area -->
+     <div id="status-area" class="status-area"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
