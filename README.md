@@ -1,9 +1,15 @@
-# CHAOSENCRYPT (PCE-100x) – README
+# CHAOSENCRYPT (PCE-100x)
 
-> **Version**: 1.0  
-> **Author**: Sethu Iyer
+[![NIST-RNG Pass ✅](https://img.shields.io/badge/NIST--SP800--22-14%2F15%20PASS-green)](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-22r1a.pdf)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0-orange.svg)](https://github.com/sethuiyer/chaosencrypt/releases)
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](./PAPER.md)
+[![Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://sethuiyer.github.io/chaosencrypt/)
+[![Entropy](https://img.shields.io/badge/entropy-7.98%20bits%2Fbyte-purple.svg)](https://en.wikipedia.org/wiki/Entropy_(information_theory))
+[![Cycle Length](https://img.shields.io/badge/cycle%20length-10M%2B%20steps-yellow.svg)](https://en.wikipedia.org/wiki/Cycle_detection)
+
+> **Author**: Sethu Iyer  
 > **Last Updated**: 2025-03-29  
-
 
 <img src="./logo.png" width="256"/>
 
@@ -19,7 +25,7 @@ Not NIST-approved yet. I'll update the results if that holds.
 [Paper](./PAPER.md)
 [Demo](https://sethuiyer.github.io/chaosencrypt/)
 
-## Table of Contents
+## 📑 Table of Contents
 
 1. [Introduction](#introduction)  
 2. [Overview](#overview)  
@@ -48,7 +54,7 @@ Not NIST-approved yet. I'll update the results if that holds.
 
 ---
 
-## Introduction
+## 🎯 Introduction
 
 **CHAOSENCRYPT** – often referred to internally as **PCE-100x** (Prime Chaos Encoder, 100x version) – is an experimental cryptographic-like system that harnesses a prime-based deterministic chaotic map to generate unpredictable streams for **encryption, key exchange, and message integrity**.
 
@@ -70,7 +76,7 @@ Despite the swirling complexity, the code remains remarkably approachable, bridg
 
 ---
 
-## Overview
+## 📋 Overview
 
 The **Chaosencrypt** approach is built on **two** major pillars:
 
@@ -87,9 +93,9 @@ By combining these ideas, **Chaosencrypt** morphs from a neat "it looks random" 
 
 ---
 
-## Key Concepts
+## 🔑 Key Concepts
 
-### Prime-Based Chaotic Generator
+### 🔢 Prime-Based Chaotic Generator
 
 At the heart of Chaosencrypt is the formula:
 
@@ -105,7 +111,7 @@ where typically `a = 9973`, a prime integer. The notion is:
 
 **Why 9973?** It's a prime that was tested extensively for its chaotic properties and found to yield extremely long non-repeating cycles in typical double-precision contexts.
 
-### Statistical Strength vs. Cryptographic Strength
+### 📊 Statistical Strength vs. Cryptographic Strength
 
 1. **Statistical Strength:**  
    - Passing the NIST suite or looking uniform in histograms only means "it *looks* random."
@@ -119,9 +125,9 @@ where typically `a = 9973`, a prime integer. The notion is:
 
 ---
 
-## Core Mechanisms
+## ⚙️ Core Mechanisms
 
-### Chaotic Map
+### 🔄 Chaotic Map
 
 > \[
 > x_{n+1} = (prime \cdot x_n) \bmod 1
@@ -142,7 +148,7 @@ let x_n = state / 1e7; // Back to [0,1)
 
 **Cycle Length** can exceed millions of steps in typical double precision, especially if the seed is chosen to avoid trivial orbits.
 
-### Dynamic Step Count & KDF
+### 🔢 Dynamic Step Count & KDF
 
 In **Chaosencrypt**, we rarely do:
 
@@ -164,7 +170,7 @@ k_\text{derived} = (baseK + \text{secret} + \text{chunkIndex}) \mod 50
 \]
 plus a lower bound of `1`. That ensures each chunk uses a different iteration count, so each chunk's output is differently scrambled.
 
-### XOR Keystream Mode
+### 🔐 XOR Keystream Mode
 
 1. We first compute `state_k` by iterating the map `k` times from some seed.
 2. We interpret `state_k % 256` repeatedly as bytes to XOR with the plaintext chunk.
@@ -173,7 +179,7 @@ plus a lower bound of `1`. That ensures each chunk uses a different iteration co
 - XORing a strong chaotic stream with the plaintext ensures that even if an attacker sees partial input-output pairs, they cannot unravel the entire map.
 - Standard **stream cipher logic**: ciphertext = plaintext ⊕ keystream.
 
-### Direct Encoding Mode
+### 📝 Direct Encoding Mode
 
 A simpler approach (less recommended) for single bytes:
 - Convert a byte to `x_0 = (byteValue / 128)`,
@@ -184,7 +190,7 @@ A simpler approach (less recommended) for single bytes:
 - Doesn't handle chunking gracefully,
 - Easier to invert if an attacker guesses the byte range (0–127).
 
-### MAC Computation & Verification
+### 🔍 MAC Computation & Verification
 
 Chaosencrypt includes a **toy** MAC:
 \[
@@ -195,7 +201,7 @@ Chaosencrypt includes a **toy** MAC:
 - The secret is unknown to the attacker, so forging a valid MAC is extremely difficult.
 - Real deployments might prefer an HMAC with a standard hash function for cryptographic assurance.
 
-### Orbit Break Key Exchange
+### 🤝 Orbit Break Key Exchange
 
 An elegant method for sharing the secret iteration count `k`:
 
@@ -209,7 +215,7 @@ An elegant method for sharing the secret iteration count `k`:
 
 ---
 
-## Putting It All Together
+## 🧩 Putting It All Together
 
 1. **Sender** chooses dynamic or fixed `k`, chunk size, prime list, etc.
 2. **Sender** runs each chunk through the chaotic map, typically in XOR mode with a fresh seed derived from chunk data or index.
@@ -225,7 +231,7 @@ An elegant method for sharing the secret iteration count `k`:
 
 ---
 
-## Why It "Looks" So Random
+## 🎲 Why It "Looks" So Random
 
 - **Statistical Observations**: The map alone yields near-uniform distribution, minimal autocorrelation, and high entropy.
 - **Cycle Analysis**: In 64-bit float, we've seen it roam 10 million+ steps without repeating. In higher precision (like 10^12 or 10^15), orbits can be even more massive.
@@ -235,7 +241,7 @@ This is precisely why it's a **perfect building block** for a cryptographic syst
 
 ---
 
-## Major Advantages of PCE-100x
+## ✨ Major Advantages of PCE-100x
 
 1. **Simplicity**: Conceptually straightforward – prime multiplication mod a fixed precision.
 2. **Adaptability**: Tweak prime sets, chunk sizes, dynamic iteration formulas, or add non-linear steps.
@@ -246,7 +252,7 @@ This is precisely why it's a **perfect building block** for a cryptographic syst
 
 ---
 
-## Limitations & Caveats
+## ⚠️ Limitations & Caveats
 
 1. **Not Officially Standardized**: This is an experimental system. It's not recognized or vetted by standard crypto bodies like NIST.
 2. **Potential for Implementation Errors**: Subtle mistakes in seed derivation or dynamic k logic can degrade security drastically.
@@ -256,7 +262,7 @@ This is precisely why it's a **perfect building block** for a cryptographic syst
 
 ---
 
-## Security Analysis: Attacker's Perspective
+## 🔒 Security Analysis: Attacker's Perspective
 
 ### Ciphertext-Only Attack (COA)
 - All the attacker sees are big random-looking integers, optionally with a MAC. The chaotic XOR approach means they can't directly guess the keystream unless they also guess the prime(s), step counts, chunk sizes, seed derivation, etc.  
@@ -277,14 +283,14 @@ This is precisely why it's a **perfect building block** for a cryptographic syst
 
 ---
 
-## Usage Guidelines
+## 📚 Usage Guidelines
 
-### Installation
+### 📥 Installation
 
 1. **Download** or **clone** the repository from GitHub.  
 2. **Open** the `index.html` in your browser (if you want the web-based UI), or use the Python version (`chaosencrypt.py`) in a command line.
 
-### Basic Encryption/Decryption Example
+### 💻 Basic Encryption/Decryption Example
 
 **Pseudo-code** (XOR Mode, single prime, chunk size 1 byte):
 ```js
@@ -305,7 +311,7 @@ const config = {
 //   ciphertextByte = plainByte ^ (keystream % 256)
 ```
 
-### Orbit Break Simulation Example
+### 🔄 Orbit Break Simulation Example
 
 1. **Alice & Bob** agree on `seed = 0.111111111111`, prime = `[9973]`, precision = `10^12`.
 2. **Bob** multiplies for `k=6` steps, sending each result to Alice.
@@ -314,7 +320,7 @@ const config = {
 
 ---
 
-## Advanced Tips
+## 💡 Advanced Tips
 
 1. **Use Multiple Primes**: `[9973, 9941, 9929, ...]` to cycle each iteration for deeper complexity.
 2. **Use a Real KDF**: e.g., `k = baseK + HMAC(index || secretKey, "ChaoticKDF") mod 100`.
@@ -324,7 +330,7 @@ const config = {
 
 ---
 
-## FAQ
+## ❓ FAQ
 
 1. **Q: Is this NIST-approved encryption?**  
    **A:** No. This is an experimental approach. For mission-critical data, you'd typically use standardized ciphers (AES, ChaCha20). PCE-100x is an exploration of chaos-based encryption concepts.
@@ -343,7 +349,7 @@ const config = {
 
 ---
 
-## Experimental Validation of the Chaotic Generator
+## 🔬 Experimental Validation of the Chaotic Generator
 
 Before designing Chaosencrypt (PCE-100x), we ran a series of experiments to rigorously test the **statistical quality**, **cycle length**, and **parameter sensitivity** of the chaotic map:
 
@@ -465,7 +471,7 @@ These experiments formed the **bedrock justification** for treating the map as a
     Cosine sim is the harmony detector.
     And what you hear… is the ghost chord of shared meaning.
 
-## References & Further Reading
+## 📚 References & Further Reading
 
 - **[1]** Blum, L., Blum, M., & Shub, M., *A Simple Unpredictable Pseudo-Random Number Generator*, SIAM Journal on Computing, 1986.  
 - **[2]** Shanon, C. E., *Communication Theory of Secrecy Systems*, Bell System Technical Journal, 1949.  
