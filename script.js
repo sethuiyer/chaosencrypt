@@ -578,3 +578,46 @@ function drawOrbit(points) {
 
 // Initial Draw
 drawOrbit([]); // Draw empty axes on load
+
+// Set default options on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default values
+    document.getElementById('use-dynamic-k').checked = true;
+    document.getElementById('use-xor-keystream').checked = true;
+    document.getElementById('include-mac').checked = true;
+    document.getElementById('chunk-size').value = '16';
+    document.getElementById('primes').value = '9973, 9941, 9929';
+    
+    // Set decryption defaults to match
+    document.getElementById('was-dynamic-k').checked = true;
+    document.getElementById('was-xor-keystream').checked = true;
+    document.getElementById('verify-mac-flag').checked = true;
+
+    // Add retro cursor trail effect
+    const cursor = document.createElement('div');
+    cursor.className = 'cursor-trail';
+    document.body.appendChild(cursor);
+
+    document.addEventListener('mousemove', function(e) {
+        cursor.style.left = e.pageX + 'px';
+        cursor.style.top = e.pageY + 'px';
+    });
+});
+
+// Add cursor trail styles
+const style = document.createElement('style');
+style.textContent = `
+    .cursor-trail {
+        position: fixed;
+        width: 20px;
+        height: 20px;
+        background: var(--neon-pink);
+        border-radius: 50%;
+        pointer-events: none;
+        opacity: 0.5;
+        z-index: 9999;
+        transition: all 0.1s ease;
+        mix-blend-mode: screen;
+    }
+`;
+document.head.appendChild(style);
