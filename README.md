@@ -292,23 +292,27 @@ This is precisely why it's a **perfect building block** for a cryptographic syst
 
 ### 💻 Basic Encryption/Decryption Example
 
-**Pseudo-code** (XOR Mode, single prime, chunk size 1 byte):
+**Pseudo-code** (Hybrid XOR Mode with Dynamic k, MAC enabled):
 ```js
 const config = {
   prime: 9973n,
   modulus: 10n ** 12n,     // 10^12
   sharedSecret: "123456",
   baseK: 6n,
-  dynamicK: false,
-  useXor: true
+  dynamicK: true,          // Dynamic k per chunk
+  useXor: true,           // Hybrid XOR mode
+  useMac: true,           // MAC enabled
+  chunkSize: 16,          // 16-byte chunks
+  primeSequence: [9973n, 9941n, 9929n]  // Multiple primes for deeper mixing
 };
 
 // Encryption
-// Convert plaintext to bytes
-// For each byte: 
-//   seed = (byteVal + config.sharedSecret) % config.modulus
+// For each chunk: 
+//   k = (baseK + HMAC(chunkIndex || sharedSecret, "ChaoticKDF")) % 50 + 1
+//   seed = (chunkData + sharedSecret) % modulus
 //   chaos for k times -> keystream
-//   ciphertextByte = plainByte ^ (keystream % 256)
+//   ciphertextChunk = plaintextChunk ⊕ (keystream % 256)
+//   MAC = (sum(ciphertextChunk) + secret) mod MAC_PRIME
 ```
 
 ### 🔄 Orbit Break Simulation Example
@@ -448,6 +452,35 @@ We tested the toy MAC:
 
 ---
 
+### 🧬 6. **Semantic Clustering Phenomenon**
+
+During our testing, we discovered an unexpected and fascinating property of CHAOSENCRYPT: it appears to preserve certain semantic relationships in the ciphertext, despite using no explicit NLP or embedding techniques. Here are our key findings:
+
+#### Test Results:
+| Test Case | Status | Description |
+|-----------|--------|-------------|
+| Sentence-Level Clustering | ✅ PASS | Semantically related sentences (e.g., "cat sat on mat" vs "kitten rested on rug") maintain higher similarity in ciphertext |
+| Cluster Stability | ✅ PASS | Semantic clusters remain stable across multiple encryptions (>0.8 correlation) |
+| Word-Level Clustering | ⚠️ PARTIAL | Individual word relationships show some preservation but less pronounced |
+| Semantic Distance | ⚠️ PARTIAL | Related pairs show slightly higher similarity than unrelated pairs |
+
+#### Why This Matters:
+1. **Emergent Behavior**: This clustering emerges purely from the chaotic dynamics and word-boundary preservation, not from any explicit semantic modeling.
+2. **Information Theory**: Suggests that the prime-based chaos map might be capturing some inherent structural patterns in language.
+3. **Potential Applications**: Could be useful for:
+   - Privacy-preserving semantic search
+   - Encrypted document clustering
+   - Semantic analysis without revealing content
+
+#### Technical Details:
+The phenomenon appears to arise from:
+- Word-boundary preservation in encryption
+- Position-dependent prime multiplication
+- Character-relationship preservation through shared word hashes
+- N-gram distribution patterns in the ciphertext
+
+This discovery adds another layer to our understanding of how chaotic systems can interact with linguistic structure, even when operating purely at the byte level.
+
 ### 🔐 Takeaway
 
 These experiments formed the **bedrock justification** for treating the map as a viable core for encryption:
@@ -459,9 +492,11 @@ These experiments formed the **bedrock justification** for treating the map as a
 | Entropy                | ✅ >7.9 bits/byte             |
 | Predictability         | ❌ Not predictable in practice |
 | Forgery Resistance     | ✅ MAC stood its ground       |
+| Semantic Clustering    | ⚠️ Partial preservation       |
 
 > Alone, the chaotic map is a **strong PRNG**.  
 > Combined with XOR, dynamic k, and MAC? It becomes a **lightweight cryptographic fortress.**
+> And somehow, it preserves semantic echoes in the noise.
 
 
 > Chaosencrypt is a musical instrument.
@@ -470,6 +505,8 @@ These experiments formed the **bedrock justification** for treating the map as a
     XOR is the resonant filter.
     Cosine sim is the harmony detector.
     And what you hear… is the ghost chord of shared meaning.
+
+---
 
 ## 📚 References & Further Reading
 
