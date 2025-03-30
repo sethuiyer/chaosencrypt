@@ -15,15 +15,25 @@
 
 Deterministic chaos meets encryption. A prime-fueled, keystream-based cipher with stealth key exchange.
 
-🔐 PCE-100x (CHAOSENCRYPT) is a lightweight, prime-based chaotic encryption system built on deterministic maps, dynamic step counts, XOR keystreams, and stealthy Orbit Break key exchange.
+🔐 PCE-100x (CHAOSENCRYPT) is a lightweight, prime-based chaotic encryption system that combines:
+- Deterministic chaotic maps with prime multipliers
+- Dynamic step counts and XOR keystreams
+- Stealthy Orbit Break key exchange
+- Semantic-preserving encryption
+- NIST-grade statistical properties
 
-Think stream cipher meets chaos theory — forged in math, hardened by entropy, and elegant enough to teach.
+Think stream cipher meets chaos theory — forged in math, hardened by entropy, and elegant enough to teach. Our research revealed unexpected properties:
+- 14/15 NIST SP800-22 tests passed
+- 10M+ step cycles without repetition
+- Semantic clustering preservation in ciphertext
+- Unforgeable MAC with unknown secrets
+- Novel orbit-based key exchange
 
-Not NIST-approved yet. I'll update the results if that holds.
-
+Not NIST-approved yet, but showing promising cryptographic properties. I'll update the results if that holds.
 
 [Paper](./PAPER.md)
 [Demo](https://sethuiyer.github.io/chaosencrypt/)
+[CLI Documentation](#-command-line-interface)
 
 ## 📑 Table of Contents
 
