@@ -15,6 +15,9 @@ Think stream cipher meets chaos theory — forged in math, hardened by entropy, 
 
 Not NIST-approved yet. I'll update the results if that holds.
 
+[Paper](./PAPER.md)
+[Demo](https://sethuiyer.github.io/chaosencrypt/)
+
 ## Table of Contents
 
 1. [Introduction](#introduction)  
