@@ -15,6 +15,7 @@ Think stream cipher meets chaos theory — forged in math, hardened by entropy, 
 
 Not NIST-approved yet. I'll update the results if that holds.
 
+
 [Paper](./PAPER.md)
 [Demo](https://sethuiyer.github.io/chaosencrypt/)
 
@@ -435,6 +436,12 @@ These experiments formed the **bedrock justification** for treating the map as a
 > Combined with XOR, dynamic k, and MAC? It becomes a **lightweight cryptographic fortress.**
 
 
+> Chaosencrypt is a musical instrument.
+    Prime-based chaos is the tuning fork.
+    Language structure is the string pattern.
+    XOR is the resonant filter.
+    Cosine sim is the harmony detector.
+    And what you hear… is the ghost chord of shared meaning.
 
 ## References & Further Reading
 
