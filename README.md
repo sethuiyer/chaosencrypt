@@ -9,6 +9,8 @@
 [![Cycle Length](https://img.shields.io/badge/cycle%20length-10M%2B%20steps-yellow.svg)](https://en.wikipedia.org/wiki/Cycle_detection)
 [![Python](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/)
 [![GitHub](https://img.shields.io/github/stars/sethuiyer/chaosencrypt?style=social)](https://github.com/sethuiyer/chaosencrypt)
+![Coverage](https://img.shields.io/badge/Coverage-71%25-yellowgreen)
+
 
 > **Author**: Sethu Iyer  
 > **Last Updated**: 2025-03-29
@@ -16,6 +18,8 @@
 <img src="./logo.png" width="256"/>
 
 **CHAOSENCRYPT** (PCE-100x) is an experimental, prime-fueled, keystream-based cipher that marries deterministic chaos with encryption, featuring a unique stealth key exchange mechanism and emergent semantic properties.
+
+**Disclaimer:** CHAOSENCRYPT is an experimental research project exploring novel concepts in chaos-based cryptography. It has not undergone formal cryptographic review or standardization (like NIST approval) and should **not** be used for protecting sensitive data in production environments. Standard, vetted algorithms (e.g., AES, ChaCha20) are recommended for such purposes.
 
 ## 🚀 Core Concepts
 
@@ -57,9 +61,7 @@ Our research includes rigorous testing:
 
 ### 🔢 Dynamic Step Count & KDF
 
--   Iterates the map `k` times.
--   `k` can be fixed, dynamic (derived), or communicated via Orbit Break.
--   KDF: `k_derived = (baseK + secret + chunkIndex) mod 50 + 1`
+The number of iterations `k` can be dynamic. Instead of a simplistic derivation like `(baseK + secret + chunkIndex) mod 50 + 1`, the reference implementation derives `k` for each chunk using **HMAC-SHA256** seeded with the shared secret and chunk index for significantly enhanced security and unpredictability.
 
 ### 🔐 XOR Keystream Mode
 
@@ -68,8 +70,7 @@ Our research includes rigorous testing:
 
 ### 🔍 MAC Computation & Verification
 
--   `MAC = (Σ(ciphertextValues) + secret) mod MAC_PRIME`.
--   `MAC_PRIME`: Large prime (e.g., `1e65 + 67`).
+While initial explorations used a simple sum-based MAC (`Σ(ciphertextValues) + secret) mod MAC_PRIME`), the reference implementation utilizes **HMAC-SHA256** over the ciphertext for robust, standard-compliant integrity verification. The illustrative sum-based MAC demonstrated resistance to basic forgery in simulations *when the secret was unknown*, but HMAC is strongly preferred.
 
 ### 🤝 Orbit Break Key Exchange
 
@@ -77,6 +78,10 @@ Our research includes rigorous testing:
 2.  Bob iterates and sends results.
 3.  At `k+1`, Bob sends noise.
 4.  Alice detects the break and infers `k`.
+
+### 🤝 Chaotic Structural Echo (CSE)
+
+An unexpected finding during early exploration with simpler configurations was the 'Chaotic Structural Echo' (CSE) – a tendency for ciphertexts of structurally similar plaintexts to cluster when analyzed (e.g., via cosine similarity). However, rigorous testing reveals this effect is significantly **attenuated or disrupted** when employing the recommended security enhancements (HMAC-based seeding/KDF, dynamic k). Quantitative tests often fail to show strong clustering under these modes. This suggests the enhanced layering is effectively increasing obfuscation, moving the system closer to standard cryptographic goals by suppressing latent structural information leakage. The study of CSE under varying parameters remains an interesting research avenue into the interplay of chaos and structure.
 
 ### 🧪 1. **NIST Statistical Tests**
 
@@ -103,7 +108,6 @@ Demonstrates cryptographic-grade entropy from pure multiplicative chaos.![NIST-R
 | Linear Complexity             | ✅ Pass |
 
 The only 'fail' (Overlapping Template) is statistically insignificant for N=1 and commonly fails even on known-good RNGs.
-
 
 ## 🛠️ Command-Line Interface (CLI)
 
@@ -169,14 +173,14 @@ Decrypted message: Hello, CHAOSENCRYPT!
 -   **Implementation Errors:** Sensitive to coding mistakes.
 -   **MAC is "Toy":** Use HMAC for production.
 -   **Seed/Key Management:** Critical for security.
--   **CPA Attacks:** Potential weakness with simplistic `k` derivation.
+-   **CPA Attacks:** While HMAC-based KDF significantly strengthens resistance, the underlying deterministic nature warrants caution. Avoid configurations that might lead to predictable seed or `k` patterns across different encryption contexts.
 
 ## 🔒 Security Considerations
 
 -   **COA:** Challenging unless the attacker can exhaust an enormous parameter space.
 -   **KPA:** Difficult due to dynamic `k` and separate chunk processing.
 -   **CPA:** Design your KDF carefully to avoid patterns.
--   **MAC Forgery:** Nearly impossible with a hidden secret.
+-   **MAC Forgery:** Using HMAC-SHA256 provides standard, strong protection against forgery assuming the secret key is kept confidential.
 -   **Orbit Break Exploit:** Secure if the attacker does not share the prime seed.
 
 ## 📖 Table of Contents
@@ -208,3 +212,5 @@ Decrypted message: Hello, CHAOSENCRYPT!
 ---
 
 Explore the fascinating world of prime-driven chaos and discover the surprising properties of CHAOSENCRYPT!
+
+The project includes a test suite (`pytest tests/`) to validate functionality and performance. This adds transparency to the development process and helps ensure reliability. Specific tests related to CSE can be linked for further exploration.

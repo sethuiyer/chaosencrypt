@@ -341,6 +341,10 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
             click.echo("  1. A message directly: chaosencrypt encrypt 'your message'", err=True)
             click.echo("  2. An input file: chaosencrypt encrypt --input-file your_file.txt", err=True)
             return 0
+        if input_file and not os.path.exists(input_file):
+            print(input_file)
+            click.echo("Error: File is invalid.", err=True)
+            return 0
 
         # Parse primes
         try:
