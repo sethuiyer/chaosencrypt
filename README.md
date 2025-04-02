@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0-orange.svg)](https://github.com/sethuiyer/chaosencrypt/releases)
 [![Documentation](https://img.shields.io/badge/docs-available-brightgreen.svg)](./PAPER.md)
-[![Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://sethuiyer.github.io/chaosencrypt/)
+[![Demo](https://img.shields.io/badge/demo-live-blue.svg)](https://sethuiyer.github.io/chaosencrypt/index.html)
 [![Entropy](https://img.shields.io/badge/entropy-7.98%20bits%2Fbyte-purple.svg)](https://en.wikipedia.org/wiki/Entropy_(information_theory))
 [![Cycle Length](https://img.shields.io/badge/cycle%20length-10M%2B%20steps-yellow.svg)](https://en.wikipedia.org/wiki/Cycle_detection)
 [![Python](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/)
@@ -13,7 +13,7 @@
 > **Author**: Sethu Iyer  
 > **Last Updated**: 2025-03-29
 
-<img src="./logo.png" width="256"/>
+<img src="../logo.png" width="256"/>
 
 **CHAOSENCRYPT** (PCE-100x) is an experimental, prime-fueled, keystream-based cipher that marries deterministic chaos with encryption, featuring a unique stealth key exchange mechanism and emergent semantic properties.
 
