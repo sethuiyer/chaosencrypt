@@ -13,7 +13,7 @@
 > **Author**: Sethu Iyer  
 > **Last Updated**: 2025-03-29
 
-<img src="../logo.png" width="256"/>
+<img src="./logo.png" width="256"/>
 
 **CHAOSENCRYPT** (PCE-100x) is an experimental, prime-fueled, keystream-based cipher that marries deterministic chaos with encryption, featuring a unique stealth key exchange mechanism and emergent semantic properties.
 

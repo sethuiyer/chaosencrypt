@@ -5,6 +5,7 @@ import math
 from typing import List, Tuple, Optional
 import hmac
 import hashlib
+import os
 
 # Constants
 MAC_PRIME = int("1" + "0" * 64 + "67")  # Same as JS: 1e65 + 67
@@ -19,8 +20,21 @@ class ChaosEncrypt:
                  base_k: int = 6,
                  use_dynamic_k: bool = True,
                  use_xor: bool = True,
-                 use_mac: bool = True):
-        """Initialize ChaosEncrypt with configuration."""
+                 use_mac: bool = True,
+                 use_semantic_chunking: bool = True):
+        """Initialize ChaosEncrypt with configuration.
+        
+        Args:
+            precision: Precision for calculations (1-100)
+            primes: List of prime numbers for chaotic map
+            shared_secret: Secret key for encryption/decryption
+            chunk_size: Size of chunks for processing (1-1024)
+            base_k: Base k value for iterations (1-100)
+            use_dynamic_k: Whether to use dynamic k values
+            use_xor: Whether to use XOR mode
+            use_mac: Whether to use MAC verification
+            use_semantic_chunking: Whether to use semantic-aware chunking
+        """
         self.precision = precision
         self.modulus = 10 ** precision
         self.primes = primes or [DEFAULT_PRIME]
@@ -30,6 +44,7 @@ class ChaosEncrypt:
         self.use_dynamic_k = use_dynamic_k
         self.use_xor = use_xor
         self.use_mac = use_mac
+        self.use_semantic_chunking = use_semantic_chunking
 
     def derive_k(self, chunk_index: int) -> int:
         """Derive dynamic k value for a chunk."""
@@ -85,14 +100,72 @@ class ChaosEncrypt:
             temp_state = self.chaotic_step(temp_state, k)
         return bytes(keystream)
 
-    def encrypt(self, plaintext: str) -> Tuple[bytes, Optional[int]]:
-        """Encrypt plaintext using chaotic map."""
-        plaintext_bytes = plaintext.encode('utf-8')
-        encrypted = bytearray()
+    def _split_into_chunks(self, text: str) -> List[str]:
+        """Split text into chunks while preserving UTF-8 characters and semantic boundaries.
         
-        # Process in chunks
-        chunks = [plaintext_bytes[i:i+self.chunk_size] 
-                 for i in range(0, len(plaintext_bytes), self.chunk_size)]
+        Args:
+            text: Input text to split
+            
+        Returns:
+            List of chunks preserving UTF-8 characters and semantic boundaries
+        """
+        if not self.use_semantic_chunking:
+            # Simple UTF-8 safe chunking
+            chunks = []
+            current_chunk = []
+            current_size = 0
+            
+            for char in text:
+                char_bytes = char.encode('utf-8')
+                if current_size + len(char_bytes) > self.chunk_size:
+                    chunks.append(''.join(current_chunk))
+                    current_chunk = [char]
+                    current_size = len(char_bytes)
+                else:
+                    current_chunk.append(char)
+                    current_size += len(char_bytes)
+            
+            if current_chunk:
+                chunks.append(''.join(current_chunk))
+            return chunks
+        else:
+            # Semantic-aware chunking
+            # Split on word boundaries and preserve punctuation
+            import re
+            words = re.findall(r'\b\w+\b|[^\w\s]', text)
+            chunks = []
+            current_chunk = []
+            current_size = 0
+            
+            for word in words:
+                word_bytes = word.encode('utf-8')
+                if current_size + len(word_bytes) > self.chunk_size:
+                    chunks.append(''.join(current_chunk))
+                    current_chunk = [word]
+                    current_size = len(word_bytes)
+                else:
+                    current_chunk.append(word)
+                    current_size += len(word_bytes)
+            
+            if current_chunk:
+                chunks.append(''.join(current_chunk))
+            return chunks
+
+    def encrypt(self, plaintext: str) -> Tuple[bytes, Optional[int]]:
+        """Encrypt plaintext using chaotic map.
+        
+        Args:
+            plaintext: Text to encrypt
+            
+        Returns:
+            Tuple of (encrypted bytes, MAC value if enabled)
+            
+        Raises:
+            UnicodeEncodeError: If input contains invalid UTF-8 characters
+        """
+        # Split into chunks while preserving UTF-8 and semantic boundaries
+        chunks = self._split_into_chunks(plaintext)
+        encrypted = bytearray()
         
         for chunk_index, chunk in enumerate(chunks):
             # Get k for this chunk
@@ -106,32 +179,47 @@ class ChaosEncrypt:
             )
             seed = int.from_bytes(h.digest()[:8], 'big') % self.modulus
             
+            # Convert chunk to bytes
+            chunk_bytes = chunk.encode('utf-8')
+            
             if self.use_xor:
                 # XOR mode: generate keystream
-                keystream = self.generate_keystream(len(chunk), seed, k)
-                encrypted.extend(bytes(a ^ b for a, b in zip(chunk, keystream)))
+                keystream = self.generate_keystream(len(chunk_bytes), seed, k)
+                encrypted.extend(bytes(a ^ b for a, b in zip(chunk_bytes, keystream)))
             else:
                 # Direct mode: apply chaos directly
-                state = int.from_bytes(chunk, 'big') % self.modulus
+                state = int.from_bytes(chunk_bytes, 'big') % self.modulus
                 for step in range(k):
                     state = self.chaotic_step(state, step)
-                encrypted.extend(state.to_bytes(len(chunk), 'big'))
+                encrypted.extend(state.to_bytes(len(chunk_bytes), 'big'))
         
         # Calculate MAC if enabled
         mac = self.calculate_mac(encrypted) if self.use_mac else None
         return bytes(encrypted), mac
 
     def decrypt(self, ciphertext: bytes, mac: Optional[int] = None) -> str:
-        """Decrypt ciphertext using chaotic map."""
+        """Decrypt ciphertext using chaotic map.
+        
+        Args:
+            ciphertext: Encrypted bytes to decrypt
+            mac: Optional MAC value for verification
+            
+        Returns:
+            Decrypted text
+            
+        Raises:
+            ValueError: If MAC verification fails or decryption fails
+            UnicodeDecodeError: If decrypted data is not valid UTF-8
+        """
         if self.use_mac and mac is not None:
             if not self.verify_mac(ciphertext, mac):
                 raise ValueError("MAC verification failed")
         
-        decrypted = bytearray()
-        chunks = [ciphertext[i:i+self.chunk_size] 
-                 for i in range(0, len(ciphertext), self.chunk_size)]
+        # Calculate chunk sizes based on ciphertext length
+        total_chunks = (len(ciphertext) + self.chunk_size - 1) // self.chunk_size
+        decrypted_chunks = []
         
-        for chunk_index, chunk in enumerate(chunks):
+        for chunk_index in range(total_chunks):
             # Get k for this chunk
             k = self.derive_k(chunk_index)
             
@@ -143,21 +231,85 @@ class ChaosEncrypt:
             )
             seed = int.from_bytes(h.digest()[:8], 'big') % self.modulus
             
+            # Get chunk bytes
+            start = chunk_index * self.chunk_size
+            end = min(start + self.chunk_size, len(ciphertext))
+            chunk = ciphertext[start:end]
+            
             if self.use_xor:
                 # XOR mode: generate keystream
                 keystream = self.generate_keystream(len(chunk), seed, k)
-                decrypted.extend(bytes(a ^ b for a, b in zip(chunk, keystream)))
+                decrypted_chunk = bytes(a ^ b for a, b in zip(chunk, keystream))
             else:
                 # Direct mode: reverse chaos
                 state = int.from_bytes(chunk, 'big')
                 for step in range(k):
                     state = self.chaotic_step(state, k - step - 1)
-                decrypted.extend(state.to_bytes(len(chunk), 'big'))
+                decrypted_chunk = state.to_bytes(len(chunk), 'big')
+            
+            try:
+                decrypted_chunks.append(decrypted_chunk.decode('utf-8'))
+            except UnicodeDecodeError:
+                raise ValueError("Decryption failed: Invalid key or corrupted data")
         
+        return ''.join(decrypted_chunks)
+
+def validate_input(precision: int, primes: List[int], secret: str, chunk_size: int, 
+                  base_k: int, mac_value: Optional[str] = None, ciphertext: Optional[str] = None) -> None:
+    """Validate input parameters for encryption/decryption operations.
+    
+    Args:
+        precision: Precision for calculations (1-100)
+        primes: List of prime numbers
+        secret: Shared secret key
+        chunk_size: Size of chunks for processing (1-1024)
+        base_k: Base k value for iterations (1-100)
+        mac_value: Optional MAC value for verification
+        ciphertext: Optional ciphertext for decryption
+    
+    Raises:
+        ValueError: If any input parameter is invalid
+    """
+    # Validate precision
+    if not isinstance(precision, int) or precision < 1 or precision > 100:
+        raise ValueError("Precision must be an integer between 1 and 100")
+    
+    # Validate primes
+    if not primes:
+        raise ValueError("At least one prime number must be provided")
+    for prime in primes:
+        if not isinstance(prime, int) or prime < 2:
+            raise ValueError("All primes must be integers greater than 1")
+    
+    # Validate secret
+    if not secret or not isinstance(secret, str):
+        raise ValueError("Secret must be a non-empty string")
+    
+    # Validate chunk_size
+    if not isinstance(chunk_size, int) or chunk_size < 1 or chunk_size > 1024:
+        raise ValueError("Chunk size must be an integer between 1 and 1024")
+    
+    # Validate base_k
+    if not isinstance(base_k, int) or base_k < 1 or base_k > 100:
+        raise ValueError("Base k must be an integer between 1 and 100")
+    
+    # Validate mac_value if provided
+    if mac_value is not None:
         try:
-            return decrypted.decode('utf-8')
-        except UnicodeDecodeError:
-            raise ValueError("Decryption failed: Invalid key or corrupted data")
+            int(mac_value)
+        except ValueError:
+            raise ValueError("MAC value must be a valid integer")
+    
+    # Validate ciphertext if provided
+    if ciphertext is not None:
+        if not isinstance(ciphertext, str):
+            raise ValueError("Ciphertext must be a string")
+        if not ciphertext:
+            raise ValueError("Ciphertext cannot be empty")
+        try:
+            bytes.fromhex(ciphertext)
+        except ValueError:
+            raise ValueError("Ciphertext must be a valid hexadecimal string")
 
 @click.group()
 def cli():
@@ -173,12 +325,49 @@ def cli():
 @click.option('--dynamic-k/--no-dynamic-k', default=True, help='Use dynamic k')
 @click.option('--xor/--no-xor', default=True, help='Use XOR mode')
 @click.option('--mac/--no-mac', default=True, help='Use MAC')
-@click.argument('message')
-def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, message):
+@click.option('--input-file', type=click.Path(exists=True), help='Input file to encrypt')
+@click.option('--output-file', type=click.Path(), help='Output file for encrypted data')
+@click.argument('message', required=False)
+def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, input_file, output_file, message):
     """Encrypt a message using CHAOSENCRYPT."""
     try:
+        # Validate input source
+        if message and input_file:
+            click.echo("Error: Input conflict detected.", err=True)
+            click.echo("You cannot provide both a message and an input file.", err=True)
+            click.echo("Please use one of the following:", err=True)
+            click.echo("  1. Provide a message directly: chaosencrypt encrypt 'your message'", err=True)
+            click.echo("  2. Use an input file: chaosencrypt encrypt --input-file your_file.txt", err=True)
+            return 1
+        if not message and not input_file:
+            click.echo("Error: No input provided.", err=True)
+            click.echo("Please provide either:", err=True)
+            click.echo("  1. A message directly: chaosencrypt encrypt 'your message'", err=True)
+            click.echo("  2. An input file: chaosencrypt encrypt --input-file your_file.txt", err=True)
+            return 1
+
         # Parse primes
-        prime_list = [int(p.strip()) for p in primes.split(',')]
+        try:
+            prime_list = [int(p.strip()) for p in primes.split(',')]
+        except ValueError:
+            click.echo("Error: Invalid prime numbers.", err=True)
+            click.echo("Please provide comma-separated integers.", err=True)
+            click.echo("Example: --primes 9973,9967,9949", err=True)
+            return 1
+        
+        # Validate inputs
+        try:
+            validate_input(
+                precision=precision,
+                primes=prime_list,
+                secret=secret,
+                chunk_size=chunk_size,
+                base_k=base_k
+            )
+        except ValueError as e:
+            click.echo(f"Error: {str(e)}", err=True)
+            click.echo("Please check the documentation for valid parameter ranges.", err=True)
+            return 1
         
         # Create encryptor
         encryptor = ChaosEncrypt(
@@ -192,16 +381,60 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
             use_mac=mac
         )
         
+        # Get input data
+        if input_file:
+            try:
+                with open(input_file, 'r', encoding='utf-8') as f:
+                    message = f.read()
+                    if not message:
+                        click.echo(f"Error: Input file '{input_file}' is empty.", err=True)
+                        click.echo("Please provide a file containing text to encrypt.", err=True)
+                        return 1
+            except UnicodeDecodeError:
+                click.echo(f"Error: Input file '{input_file}' is not valid UTF-8 text.", err=True)
+                click.echo("Please ensure your file is saved with UTF-8 encoding.", err=True)
+                return 1
+            except Exception as e:
+                click.echo(f"Error reading input file '{input_file}': {str(e)}", err=True)
+                click.echo("Please check file permissions and try again.", err=True)
+                return 1
+        
         # Encrypt
-        ciphertext, mac_value = encryptor.encrypt(message)
+        try:
+            ciphertext, mac_value = encryptor.encrypt(message)
+        except UnicodeEncodeError:
+            click.echo("Error: Input contains invalid UTF-8 characters.", err=True)
+            click.echo("Please ensure your input contains only valid UTF-8 text.", err=True)
+            return 1
         
         # Output results
-        click.echo(f"Ciphertext (hex): {ciphertext.hex()}")
-        if mac:
-            click.echo(f"MAC: {mac_value}")
+        if output_file:
+            try:
+                with open(output_file, 'w') as f:
+                    f.write(ciphertext.hex())
+                if mac:
+                    with open(output_file + '.mac', 'w') as f:
+                        f.write(str(mac_value))
+                click.echo(f"Success: Encrypted data written to '{output_file}'")
+                if mac:
+                    click.echo(f"Success: MAC value written to '{output_file}.mac'")
+            except Exception as e:
+                click.echo(f"Error writing output file '{output_file}': {str(e)}", err=True)
+                click.echo("Please check file permissions and try again.", err=True)
+                return 1
+        else:
+            click.echo("Ciphertext (hex):")
+            click.echo(ciphertext.hex())
+            if mac:
+                click.echo("\nMAC value:")
+                click.echo(mac_value)
+        
+        return 0
             
     except Exception as e:
-        click.echo(f"Error: {str(e)}", err=True)
+        click.echo(f"Unexpected error: {str(e)}", err=True)
+        click.echo("Please report this issue if it persists.", err=True)
+        return 1
 
 @cli.command()
 @click.option('--precision', default=12, help='Precision for calculations')
@@ -213,12 +446,76 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
 @click.option('--xor/--no-xor', default=True, help='Use XOR mode')
 @click.option('--mac/--no-mac', default=True, help='Use MAC')
 @click.option('--mac-value', help='MAC value for verification')
-@click.argument('ciphertext')
-def decrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, mac_value, ciphertext):
+@click.option('--input-file', type=click.Path(exists=True), help='Input file containing ciphertext')
+@click.option('--output-file', type=click.Path(), help='Output file for decrypted data')
+@click.argument('ciphertext', required=False)
+def decrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, mac_value, input_file, output_file, ciphertext):
     """Decrypt a message using CHAOSENCRYPT."""
     try:
+        # Validate input source
+        if ciphertext and input_file:
+            click.echo("Error: Input conflict detected.", err=True)
+            click.echo("You cannot provide both ciphertext and an input file.", err=True)
+            click.echo("Please use one of the following:", err=True)
+            click.echo("  1. Provide ciphertext directly: chaosencrypt decrypt 'your_ciphertext'", err=True)
+            click.echo("  2. Use an input file: chaosencrypt decrypt --input-file your_file.txt", err=True)
+            return 1
+        if not ciphertext and not input_file:
+            click.echo("Error: No input provided.", err=True)
+            click.echo("Please provide either:", err=True)
+            click.echo("  1. Ciphertext directly: chaosencrypt decrypt 'your_ciphertext'", err=True)
+            click.echo("  2. An input file: chaosencrypt decrypt --input-file your_file.txt", err=True)
+            return 1
+
         # Parse primes
-        prime_list = [int(p.strip()) for p in primes.split(',')]
+        try:
+            prime_list = [int(p.strip()) for p in primes.split(',')]
+        except ValueError:
+            click.echo("Error: Invalid prime numbers.", err=True)
+            click.echo("Please provide comma-separated integers.", err=True)
+            click.echo("Example: --primes 9973,9967,9949", err=True)
+            return 1
+        
+        # Get input data
+        if input_file:
+            try:
+                with open(input_file, 'r') as f:
+                    ciphertext = f.read()
+                    if not ciphertext:
+                        click.echo(f"Error: Input file '{input_file}' is empty.", err=True)
+                        click.echo("Please provide a file containing ciphertext to decrypt.", err=True)
+                        return 1
+                # Try to read MAC from .mac file if it exists
+                if mac and not mac_value:
+                    mac_file = input_file + '.mac'
+                    if os.path.exists(mac_file):
+                        with open(mac_file, 'r') as f:
+                            mac_value = f.read().strip()
+                    else:
+                        click.echo("Warning: MAC file not found.", err=True)
+                        click.echo(f"Expected MAC file: '{mac_file}'", err=True)
+                        click.echo("Decryption may fail if MAC verification is enabled.", err=True)
+                        click.echo("Use --no-mac to disable MAC verification.", err=True)
+            except Exception as e:
+                click.echo(f"Error reading input file '{input_file}': {str(e)}", err=True)
+                click.echo("Please check file permissions and try again.", err=True)
+                return 1
+        
+        # Validate inputs
+        try:
+            validate_input(
+                precision=precision,
+                primes=prime_list,
+                secret=secret,
+                chunk_size=chunk_size,
+                base_k=base_k,
+                mac_value=mac_value,
+                ciphertext=ciphertext
+            )
+        except ValueError as e:
+            click.echo(f"Error: {str(e)}", err=True)
+            click.echo("Please check the documentation for valid parameter ranges.", err=True)
+            return 1
         
         # Create decryptor
         decryptor = ChaosEncrypt(
@@ -233,19 +530,48 @@ def decrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
         )
         
         # Convert hex ciphertext to bytes
-        ciphertext_bytes = bytes.fromhex(ciphertext)
+        try:
+            ciphertext_bytes = bytes.fromhex(ciphertext)
+        except ValueError:
+            click.echo("Error: Invalid hex ciphertext.", err=True)
+            click.echo("Please provide a valid hexadecimal string.", err=True)
+            click.echo("Example: 48656c6c6f20576f726c64", err=True)
+            return 1
         
         # Parse MAC if provided
         mac_int = int(mac_value) if mac_value else None
         
         # Decrypt
-        plaintext = decryptor.decrypt(ciphertext_bytes, mac_int)
+        try:
+            plaintext = decryptor.decrypt(ciphertext_bytes, mac_int)
+        except ValueError as e:
+            click.echo(f"Decryption failed: {str(e)}", err=True)
+            click.echo("Possible causes:", err=True)
+            click.echo("  1. Invalid key or wrong secret", err=True)
+            click.echo("  2. Corrupted ciphertext", err=True)
+            click.echo("  3. MAC verification failed", err=True)
+            return 1
         
         # Output result
-        click.echo(f"Decrypted message: {plaintext}")
+        if output_file:
+            try:
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(plaintext)
+                click.echo(f"Success: Decrypted data written to '{output_file}'")
+            except Exception as e:
+                click.echo(f"Error writing output file '{output_file}': {str(e)}", err=True)
+                click.echo("Please check file permissions and try again.", err=True)
+                return 1
+        else:
+            click.echo("Decrypted message:")
+            click.echo(plaintext)
         
+        return 0
+            
     except Exception as e:
-        click.echo(f"Error: {str(e)}", err=True)
+        click.echo(f"Unexpected error: {str(e)}", err=True)
+        click.echo("Please report this issue if it persists.", err=True)
+        return 1
 
 if __name__ == '__main__':
     cli() 

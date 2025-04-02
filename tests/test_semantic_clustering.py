@@ -1,11 +1,22 @@
 import unittest
-import numpy as np
 from collections import defaultdict
 from typing import List, Dict, Tuple
 import re
+import time
+import random
+import matplotlib.pyplot as plt
+from src.semantic_clustering import SemanticClustering
 
 class TestSemanticClustering(unittest.TestCase):
     def setUp(self):
+        """Set up test environment.
+        
+        Known Limitations:
+        1. Word-level clustering may not work well with languages that don't use spaces
+        2. Character-level similarity is based on byte patterns, not Unicode properties
+        3. Performance degrades with very large datasets (>1000 sentences)
+        4. Semantic relationships are approximate and may not capture all nuances
+        """
         # Test sentences with semantic relationships
         self.sentences = [
             "The cat sat on the mat",
@@ -29,202 +40,241 @@ class TestSemanticClustering(unittest.TestCase):
             'furniture': ['mat', 'rug', 'table', 'desk'],
             'location': ['park', 'garden', 'sky', 'air', 'road', 'highway']
         }
+        
+        # Initialize semantic clustering
+        self.clustering = SemanticClustering()
 
     def test_encryption_preserves_semantic_clusters(self):
-        """Test that encrypted sentences maintain semantic clustering"""
+        """Test that encryption preserves semantic relationships between sentences.
+        
+        Note: This test verifies basic semantic preservation but may not capture
+        all nuances of meaning. The similarity threshold (0.7) is approximate.
+        """
         # Encrypt all sentences
-        encrypted_sentences = [self.encrypt(sentence) for sentence in self.sentences]
+        encrypted_sentences = [self.clustering.encrypt(s) for s in self.sentences]
         
-        # Calculate pairwise similarities between encrypted sentences
-        similarities = self.calculate_similarities(encrypted_sentences)
+        # Calculate similarity matrix
+        similarities = self.clustering.calculate_similarities(encrypted_sentences)
         
-        # Verify that semantically related sentences have higher similarity
-        self.verify_semantic_clustering(similarities)
+        # Verify that similar sentences have high similarity
+        self.assertGreater(similarities[0][1], 0.7)  # cat sentences
+        self.assertGreater(similarities[2][3], 0.7)  # dog sentences
+        self.assertGreater(similarities[4][5], 0.7)  # bird sentences
+        
+        # Verify that different sentences have lower similarity
+        self.assertLess(similarities[0][2], 0.7)  # cat vs dog
+        self.assertLess(similarities[2][4], 0.7)  # dog vs bird
 
     def test_word_level_clustering(self):
-        """Test clustering at individual word level"""
-        # Extract and encrypt individual words
-        words = set()
-        for sentence in self.sentences:
-            words.update(sentence.lower().split())
+        """Test word-level semantic clustering.
         
-        encrypted_words = {word: self.encrypt(word) for word in words}
+        Note: This test assumes English text with space-separated words.
+        May not work well with other writing systems or languages.
+        """
+        # Test with single words
+        words = ["cat", "kitten", "dog", "puppy", "bird", "chick"]
+        encrypted_words = [self.clustering.encrypt(w) for w in words]
         
         # Calculate word similarities
-        word_similarities = self.calculate_word_similarities(encrypted_words)
+        similarities = self.clustering.calculate_similarities(encrypted_words)
         
-        # Verify semantic word clusters
-        self.verify_word_clusters(word_similarities)
+        # Verify word relationships
+        self.assertGreater(similarities[0][1], 0.7)  # cat-kitten
+        self.assertGreater(similarities[2][3], 0.7)  # dog-puppy
+        self.assertGreater(similarities[4][5], 0.7)  # bird-chick
 
-    def test_semantic_distance_ordering(self):
-        """Test that semantic distances are preserved in encryption"""
-        # Create pairs of semantically related and unrelated sentences
-        related_pairs = [
-            ("The cat sat on the mat", "A kitten rested on the rug"),
-            ("The dog ran in the park", "A puppy played in the garden")
+    def test_special_characters(self):
+        """Test handling of special characters and punctuation.
+        
+        Note: Special characters may affect semantic similarity calculations
+        differently than regular words. The test uses a lenient threshold.
+        """
+        sentences = [
+            "Hello, world!",
+            "Hello world",
+            "Hello... world?",
+            "Goodbye, world!"
         ]
         
-        unrelated_pairs = [
-            ("The cat sat on the mat", "The car drove on the road"),
-            ("The bird flew in the sky", "A novel rested on the desk")
+        encrypted = [self.clustering.encrypt(s) for s in sentences]
+        similarities = self.clustering.calculate_similarities(encrypted)
+        
+        # Similar sentences should still be similar despite punctuation
+        self.assertGreater(similarities[0][1], 0.6)
+        self.assertGreater(similarities[0][2], 0.6)
+        
+        # Different sentences should be less similar
+        self.assertLess(similarities[0][3], 0.6)
+
+    def test_unicode_handling(self):
+        """Test handling of Unicode characters.
+        
+        Note: While the system handles UTF-8 encoding, semantic relationships
+        between Unicode characters may not be preserved as well as ASCII text.
+        """
+        sentences = [
+            "Hello 世界",
+            "Hello 世界!",
+            "Bonjour le monde",
+            "Hola mundo"
         ]
         
-        # Calculate similarities for both types of pairs
-        related_sims = [self.calculate_similarity(pair[0], pair[1]) for pair in related_pairs]
-        unrelated_sims = [self.calculate_similarity(pair[0], pair[1]) for pair in unrelated_pairs]
+        encrypted = [self.clustering.encrypt(s) for s in sentences]
+        similarities = self.clustering.calculate_similarities(encrypted)
         
-        # Verify that related pairs have higher similarity
-        self.assertTrue(np.mean(related_sims) > np.mean(unrelated_sims))
+        # Similar Unicode sentences should be similar
+        self.assertGreater(similarities[0][1], 0.7)
+        
+        # Different languages should be less similar
+        self.assertLess(similarities[0][2], 0.7)
+        self.assertLess(similarities[0][3], 0.7)
 
     def test_cluster_stability(self):
-        """Test that semantic clusters remain stable across multiple encryptions"""
-        # Encrypt sentences multiple times
-        num_encryptions = 5
-        all_encryptions = []
+        """Test stability of semantic clusters across multiple encryptions.
         
-        for _ in range(num_encryptions):
-            encrypted = [self.encrypt(sentence) for sentence in self.sentences]
-            all_encryptions.append(encrypted)
+        Note: Some variation in similarity scores is expected due to the
+        chaotic nature of the encryption. The stability threshold (0.8)
+        accounts for this variation.
+        """
+        # Generate multiple encryptions
+        n_encryptions = 5
+        all_similarities = []
         
-        # Calculate cluster stability
-        stability = self.calculate_cluster_stability(all_encryptions)
+        for _ in range(n_encryptions):
+            encrypted = [self.clustering.encrypt(s) for s in self.sentences]
+            similarities = self.clustering.calculate_similarities(encrypted)
+            all_similarities.append(similarities)
         
-        # Verify stability is above threshold
+        # Calculate stability
+        stability = self.clustering.calculate_cluster_stability(all_similarities)
         self.assertGreater(stability, 0.8)
 
-    def encrypt(self, text: str) -> str:
-        """Simulate CHAOSENCRYPT encryption with semantic preservation"""
-        # Use prime-based chaotic map with word-level preservation
-        words = text.lower().split()
-        encrypted_words = []
+    def test_performance_large_dataset(self):
+        """Test performance with a larger dataset.
         
-        for word in words:
-            # Preserve word boundaries and length
-            word_hash = 0
-            for i, c in enumerate(word):
-                # Use position-dependent prime multiplication
-                prime = 9973 + i * 2  # Varying prime for each position
-                word_hash = (word_hash * prime + ord(c)) % 256
-            
-            # Convert to string while preserving some character relationships
-            encrypted_word = ''
-            for i, c in enumerate(word):
-                # Use word-level hash to influence character encryption
-                char_hash = (word_hash + i * 9973) % 256
-                encrypted_char = chr((ord(c) * char_hash) % 256)
-                encrypted_word += encrypted_char
-            
-            encrypted_words.append(encrypted_word)
+        Note: Performance may degrade with very large datasets (>1000 sentences).
+        The test uses a moderate dataset size to balance accuracy and speed.
+        """
+        # Generate a larger dataset
+        large_dataset = [f"Sentence {i} with some words" for i in range(100)]
         
-        return ' '.join(encrypted_words)
+        # Measure performance
+        start_time = time.time()
+        
+        encrypted = [self.clustering.encrypt(s) for s in large_dataset]
+        similarities = self.clustering.calculate_similarities(encrypted)
+        
+        end_time = time.time()
+        processing_time = end_time - start_time
+        
+        # Should complete within reasonable time
+        self.assertLess(processing_time, 5.0)  # 5 seconds max
 
-    def calculate_similarity(self, s1: str, s2: str) -> float:
-        """Calculate similarity between two encrypted strings"""
-        # Use word-level and character-level n-gram overlap
-        s1_words = s1.split()
-        s2_words = s2.split()
+    def test_semantic_distance_ordering(self):
+        """Test that semantic distances maintain proper ordering.
         
-        # Word-level similarity
-        word_overlap = len(set(s1_words).intersection(set(s2_words)))
-        word_total = len(set(s1_words).union(set(s2_words)))
-        word_sim = word_overlap / word_total if word_total > 0 else 0
-        
-        # Character-level n-gram similarity
-        n = 3
-        s1_ngrams = set(s1[i:i+n] for i in range(len(s1)-n+1))
-        s2_ngrams = set(s2[i:i+n] for i in range(len(s2)-n+1))
-        char_overlap = len(s1_ngrams.intersection(s2_ngrams))
-        char_total = len(s1_ngrams.union(s2_ngrams))
-        char_sim = char_overlap / char_total if char_total > 0 else 0
-        
-        # Combine both similarities with weights
-        return 0.6 * word_sim + 0.4 * char_sim
-
-    def calculate_similarities(self, encrypted_sentences: List[str]) -> np.ndarray:
-        """Calculate pairwise similarities between encrypted sentences"""
-        n = len(encrypted_sentences)
-        similarities = np.zeros((n, n))
-        for i in range(n):
-            for j in range(n):
-                similarities[i,j] = self.calculate_similarity(
-                    encrypted_sentences[i], 
-                    encrypted_sentences[j]
-                )
-        return similarities
-
-    def calculate_word_similarities(self, encrypted_words: Dict[str, str]) -> Dict[Tuple[str, str], float]:
-        """Calculate similarities between encrypted words"""
-        similarities = {}
-        words = list(encrypted_words.keys())
-        for i in range(len(words)):
-            for j in range(i+1, len(words)):
-                similarities[(words[i], words[j])] = self.calculate_similarity(
-                    encrypted_words[words[i]], 
-                    encrypted_words[words[j]]
-                )
-        return similarities
-
-    def verify_semantic_clustering(self, similarities: np.ndarray):
-        """Verify that semantically related sentences cluster together"""
-        # Define semantic groups
-        groups = [
-            [0, 1],  # cat sentences
-            [2, 3],  # dog sentences
-            [4, 5],  # bird sentences
-            [6, 7],  # vehicle sentences
-            [8, 9]   # book sentences
+        Note: While absolute similarity values may vary, the relative ordering
+        of semantic distances should be preserved.
+        """
+        # Test sentences with varying semantic distances
+        sentences = [
+            "The cat sat on the mat",
+            "A cat is sitting on a mat",
+            "The cat is on the mat",
+            "The dog is on the mat",
+            "The bird is on the mat"
         ]
         
-        # Calculate within-group and between-group similarities
-        within_sims = []
-        between_sims = []
+        encrypted = [self.clustering.encrypt(s) for s in sentences]
+        similarities = self.clustering.calculate_similarities(encrypted)
+        
+        # Verify distance ordering
+        self.assertGreater(similarities[0][1], similarities[0][2])  # More similar should have higher score
+        self.assertGreater(similarities[0][2], similarities[0][3])  # Less similar should have lower score
+
+    def visualize_cluster_overlap(self):
+        """Visualize semantic cluster overlap using similarity matrices.
+        
+        Note: This is a diagnostic tool and not a test. It helps visualize
+        how well the encryption preserves semantic relationships.
+        
+        The visualization includes:
+        1. Heatmap of similarity matrix
+        2. Cluster statistics
+        """
+        # Calculate similarity matrix
+        encrypted = [self.clustering.encrypt(s) for s in self.sentences]
+        similarities = self.clustering.calculate_similarities(encrypted)
+        
+        # Create figure with multiple subplots
+        fig = plt.figure(figsize=(12, 8))
+        
+        # 1. Heatmap
+        plt.subplot(121)
+        plt.imshow(similarities, cmap='viridis', aspect='auto')
+        plt.colorbar(label='Similarity')
+        plt.title('Semantic Similarity Matrix')
+        plt.xlabel('Sentence Index')
+        plt.ylabel('Sentence Index')
+        
+        # Add sentence labels
+        plt.xticks(range(len(self.sentences)), 
+                  [s[:10] + '...' for s in self.sentences], 
+                  rotation=45)
+        plt.yticks(range(len(self.sentences)), 
+                  [s[:10] + '...' for s in self.sentences])
+        
+        # 2. Cluster Statistics
+        plt.subplot(122)
+        plt.axis('off')
+        stats_text = []
+        
+        # Calculate cluster statistics using simple thresholding
+        threshold = 0.7
+        clusters = defaultdict(list)
+        used = set()
         
         for i in range(len(self.sentences)):
-            for j in range(i+1, len(self.sentences)):
-                sim = similarities[i,j]
-                # Check if pair belongs to same semantic group
-                same_group = any(i in group and j in group for group in groups)
-                if same_group:
-                    within_sims.append(sim)
-                else:
-                    between_sims.append(sim)
-        
-        # Verify within-group similarity is higher than between-group
-        self.assertGreater(np.mean(within_sims), np.mean(between_sims))
-
-    def verify_word_clusters(self, word_similarities: Dict[Tuple[str, str], float]):
-        """Verify that semantically related words cluster together"""
-        for category, words in self.semantic_groups.items():
-            # Calculate similarities within category
-            within_sims = []
-            between_sims = []
+            if i in used:
+                continue
+            cluster = [i]
+            used.add(i)
             
-            for (w1, w2), sim in word_similarities.items():
-                if w1 in words and w2 in words:
-                    within_sims.append(sim)
-                elif w1 in words or w2 in words:
-                    between_sims.append(sim)
+            for j in range(i + 1, len(self.sentences)):
+                if j in used:
+                    continue
+                if similarities[i][j] >= threshold:
+                    cluster.append(j)
+                    used.add(j)
             
-            if within_sims and between_sims:
-                self.assertGreater(np.mean(within_sims), np.mean(between_sims))
-
-    def calculate_cluster_stability(self, all_encryptions: List[List[str]]) -> float:
-        """Calculate how stable the semantic clusters are across multiple encryptions"""
-        n = len(self.sentences)
-        stability_scores = []
+            clusters[i] = cluster
         
-        # For each pair of encryptions
-        for i in range(len(all_encryptions)-1):
-            for j in range(i+1, len(all_encryptions)):
-                # Calculate similarity matrices
-                sims1 = self.calculate_similarities(all_encryptions[i])
-                sims2 = self.calculate_similarities(all_encryptions[j])
-                
-                # Calculate correlation between similarity matrices
-                correlation = np.corrcoef(sims1.flatten(), sims2.flatten())[0,1]
-                stability_scores.append(correlation)
+        # Calculate statistics for each cluster
+        for i, cluster in clusters.items():
+            if not cluster:
+                continue
+            cluster_sentences = [self.sentences[j] for j in cluster]
+            avg_similarity = sum(similarities[i][j] for j in cluster) / len(cluster)
+            
+            stats_text.append(f"Cluster {len(stats_text) + 1}:")
+            stats_text.append(f"  Size: {len(cluster_sentences)}")
+            stats_text.append(f"  Avg Similarity: {avg_similarity:.3f}")
+            stats_text.append("  Sentences:")
+            for s in cluster_sentences:
+                stats_text.append(f"    - {s[:20]}...")
+            stats_text.append("")
         
-        return np.mean(stability_scores)
+        plt.text(0.1, 0.5, '\n'.join(stats_text), fontsize=10, va='center')
+        
+        plt.tight_layout()
+        plt.savefig('semantic_analysis.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # Print summary statistics
+        print("\nSemantic Analysis Summary:")
+        print(f"Number of clusters: {len(clusters)}")
+        print(f"Average cluster size: {len(self.sentences)/len(clusters):.1f}")
+        print("\nDetailed analysis saved to 'semantic_analysis.png'")
 
 if __name__ == '__main__':
     unittest.main() 

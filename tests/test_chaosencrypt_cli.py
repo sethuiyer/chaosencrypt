@@ -2,7 +2,8 @@ import unittest
 import tempfile
 import os
 from unittest.mock import patch
-from chaosencrypt_cli import ChaosEncrypt, encrypt, decrypt, validate_input
+from click.testing import CliRunner
+from src.chaosencrypt_cli import ChaosEncrypt, cli, validate_input
 
 class TestChaosEncrypt(unittest.TestCase):
     def setUp(self):
@@ -102,60 +103,111 @@ class TestCliFunctions(unittest.TestCase):
         self.temp_output_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
         self.temp_output_file.close()
         self.shared_secret = "test_secret"
+        self.runner = CliRunner()
 
     def tearDown(self):
         # Remove the temporary files after testing
         os.remove(self.temp_input_file.name)
         os.remove(self.temp_output_file.name)
 
-    @patch('click.echo')
-    def test_encrypt_cli(self, mock_echo):
+    def test_encrypt_cli(self):
         # Test encrypt CLI function
-        encrypt(precision=12, primes='9973', secret=self.shared_secret, chunk_size=16, base_k=6, dynamic_k=True, xor=True, mac=True, input_file=None, output_file=None, message="Test message")
-        mock_echo.assert_called()
+        result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            'Test message'
+        ])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Ciphertext (hex):', result.output)
 
-    @patch('click.echo')
-    def test_encrypt_cli_file(self, mock_echo):
+    def test_encrypt_cli_file(self):
         # Test encrypt CLI function with file input
-        encrypt(precision=12, primes='9973', secret=self.shared_secret, chunk_size=16, base_k=6, dynamic_k=True, xor=True, mac=True, input_file=self.temp_input_file.name, output_file=self.temp_output_file.name, message=None)
-        mock_echo.assert_not_called()
+        result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--input-file', self.temp_input_file.name,
+            '--output-file', self.temp_output_file.name
+        ])
+        self.assertEqual(result.exit_code, 0)
         with open(self.temp_output_file.name, 'r') as f:
             self.assertTrue(f.read() != "")
 
-    @patch('click.echo')
-    def test_encrypt_cli_message_and_file(self, mock_echo):
-        with self.assertRaises(ValueError):
-            encrypt(precision=12, primes='9973', secret=self.shared_secret, chunk_size=16, base_k=6, dynamic_k=True, xor=True, mac=True, input_file=self.temp_input_file.name, output_file=self.temp_output_file.name, message="Test message")
+    def test_encrypt_cli_message_and_file(self):
+        # Test that providing both message and input file raises error
+        result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--input-file', self.temp_input_file.name,
+            '--output-file', self.temp_output_file.name,
+            'Test message'
+        ])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn('Cannot provide both message and input file', result.output)
 
-    @patch('click.echo')
-    def test_decrypt_cli(self, mock_echo):
+    def test_decrypt_cli(self):
         # Test decrypt CLI function
-        encryptor = ChaosEncrypt(shared_secret=self.shared_secret)
-        ciphertext, mac = encryptor.encrypt("Test message")
-        decrypt(precision=12, primes='9973', secret=self.shared_secret, chunk_size=16, base_k=6, dynamic_k=True, xor=True, mac=True, mac_value=str(mac), input_file=None, output_file=None, ciphertext=ciphertext.hex())
-        mock_echo.assert_called()
+        # First encrypt a message
+        encrypt_result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            'Test message'
+        ])
+        self.assertEqual(encrypt_result.exit_code, 0)
+        
+        # Extract ciphertext and MAC from output
+        output_lines = encrypt_result.output.split('\n')
+        ciphertext = output_lines[0].split(': ')[1]
+        mac = output_lines[1].split(': ')[1]
+        
+        # Now decrypt
+        result = self.runner.invoke(cli, [
+            'decrypt',
+            '--secret', self.shared_secret,
+            '--mac-value', mac,
+            ciphertext
+        ])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('Decrypted message: Test message', result.output)
 
-    @patch('click.echo')
-    def test_decrypt_cli_file(self, mock_echo):
+    def test_decrypt_cli_file(self):
         # Test decrypt CLI function with file input
-        encryptor = ChaosEncrypt(shared_secret=self.shared_secret)
-        ciphertext, mac = encryptor.encrypt("Test message")
+        # First encrypt a message to a file
+        encrypt_result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--input-file', self.temp_input_file.name,
+            '--output-file', self.temp_output_file.name
+        ])
+        self.assertEqual(encrypt_result.exit_code, 0)
         
-        with open(self.temp_input_file.name, 'w') as f:
-            f.write(ciphertext.hex())
+        # Now decrypt from file
+        result = self.runner.invoke(cli, [
+            'decrypt',
+            '--secret', self.shared_secret,
+            '--input-file', self.temp_output_file.name,
+            '--output-file', self.temp_output_file.name + '.decrypted'
+        ])
+        self.assertEqual(result.exit_code, 0)
         
-        decrypt(precision=12, primes='9973', secret=self.shared_secret, chunk_size=16, base_k=6, dynamic_k=True, xor=True, mac=True, mac_value=str(mac), input_file=self.temp_input_file.name, output_file=self.temp_output_file.name, ciphertext=None)
-        mock_echo.assert_not_called()
-        with open(self.temp_output_file.name, 'r') as f:
-            self.assertTrue(f.read() != "")
-    
-    @patch('click.echo')
-    def test_decrypt_cli_message_and_file(self, mock_echo):
-        # Test decrypt CLI function with file input
-        encryptor = ChaosEncrypt(shared_secret=self.shared_secret)
-        ciphertext, mac = encryptor.encrypt("Test message")
-        with self.assertRaises(ValueError):
-            decrypt(precision=12, primes='9973', secret=self.shared_secret, chunk_size=16, base_k=6, dynamic_k=True, xor=True, mac=True, mac_value=str(mac), input_file=self.temp_input_file.name, output_file=self.temp_output_file.name, ciphertext=ciphertext.hex())
+        # Verify decrypted content
+        with open(self.temp_output_file.name + '.decrypted', 'r') as f:
+            decrypted = f.read()
+            self.assertEqual(decrypted, "Test input for encryption")
+        
+        # Clean up
+        os.remove(self.temp_output_file.name + '.decrypted')
+
+    def test_decrypt_cli_message_and_file(self):
+        # Test that providing both ciphertext and input file raises error
+        result = self.runner.invoke(cli, [
+            'decrypt',
+            '--secret', self.shared_secret,
+            '--input-file', self.temp_input_file.name,
+            '--output-file', self.temp_output_file.name,
+            'test_ciphertext'
+        ])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn('Cannot provide both ciphertext and input file', result.output)
 
     def test_validate_input(self):
         # Test valid inputs
@@ -170,30 +222,132 @@ class TestCliFunctions(unittest.TestCase):
         # Test invalid primes
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[1], secret="test_secret", chunk_size=16, base_k=6, mac_value=None)
+        with self.assertRaises(ValueError):
+            validate_input(precision=12, primes=[], secret="test_secret", chunk_size=16, base_k=6, mac_value=None)
+        with self.assertRaises(ValueError):
+            validate_input(precision=12, primes=[9973, 1], secret="test_secret", chunk_size=16, base_k=6, mac_value=None)
 
         # Test empty secret
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[9973], secret="", chunk_size=16, base_k=6, mac_value=None)
+        with self.assertRaises(ValueError):
+            validate_input(precision=12, primes=[9973], secret=None, chunk_size=16, base_k=6, mac_value=None)
 
         # Test invalid chunk size
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=0, base_k=6, mac_value=None)
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=1025, base_k=6, mac_value=None)
+        with self.assertRaises(ValueError):
+            validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=-1, base_k=6, mac_value=None)
 
         # Test invalid base k
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=16, base_k=0, mac_value=None)
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=16, base_k=101, mac_value=None)
+        with self.assertRaises(ValueError):
+            validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=16, base_k=-1, mac_value=None)
 
         # Test invalid mac_value
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=16, base_k=6, mac_value="test")
+        with self.assertRaises(ValueError):
+            validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=16, base_k=6, mac_value="-1")
 
         # Test invalid ciphertext
         with self.assertRaises(ValueError):
             validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=16, base_k=6, mac_value=None, ciphertext="test")
+        with self.assertRaises(ValueError):
+            validate_input(precision=12, primes=[9973], secret="test_secret", chunk_size=16, base_k=6, mac_value=None, ciphertext="")
+
+    def test_file_operations(self):
+        """Test file operations with various scenarios"""
+        # Test with non-existent input file
+        result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--input-file', 'nonexistent.txt',
+            '--output-file', self.temp_output_file.name
+        ])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn('Error: File', result.output)
+
+        # Test with read-only output directory
+        read_only_dir = tempfile.mkdtemp()
+        os.chmod(read_only_dir, 0o444)  # Make directory read-only
+        result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--input-file', self.temp_input_file.name,
+            '--output-file', os.path.join(read_only_dir, "output.txt")
+        ])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn('Error: Permission denied', result.output)
+        os.rmdir(read_only_dir)
+
+        # Test with empty input file
+        empty_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        empty_file.close()
+        result = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--input-file', empty_file.name,
+            '--output-file', self.temp_output_file.name
+        ])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn('Error: Input file is empty', result.output)
+        os.remove(empty_file.name)
+
+    def test_prime_combinations(self):
+        """Test encryption with different prime number combinations"""
+        test_message = "Test message"
+        
+        # Test with single prime
+        result1 = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--primes', '9973',
+            test_message
+        ])
+        self.assertEqual(result1.exit_code, 0)
+        output_lines = result1.output.split('\n')
+        ciphertext1 = output_lines[0].split(': ')[1]
+        mac1 = output_lines[1].split(': ')[1]
+        
+        # Test with multiple primes
+        result2 = self.runner.invoke(cli, [
+            'encrypt',
+            '--secret', self.shared_secret,
+            '--primes', '9973,9967',
+            test_message
+        ])
+        self.assertEqual(result2.exit_code, 0)
+        output_lines = result2.output.split('\n')
+        ciphertext2 = output_lines[0].split(': ')[1]
+        mac2 = output_lines[1].split(': ')[1]
+        
+        # Verify different primes produce different ciphertexts
+        self.assertNotEqual(ciphertext1, ciphertext2)
+        
+        # Verify both can be decrypted correctly
+        decrypt1 = self.runner.invoke(cli, [
+            'decrypt',
+            '--secret', self.shared_secret,
+            '--mac-value', mac1,
+            ciphertext1
+        ])
+        self.assertEqual(decrypt1.exit_code, 0)
+        self.assertIn('Decrypted message: Test message', decrypt1.output)
+        
+        decrypt2 = self.runner.invoke(cli, [
+            'decrypt',
+            '--secret', self.shared_secret,
+            '--mac-value', mac2,
+            ciphertext2
+        ])
+        self.assertEqual(decrypt2.exit_code, 0)
+        self.assertIn('Decrypted message: Test message', decrypt2.output)
 
 
 if __name__ == '__main__':
