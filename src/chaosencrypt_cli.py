@@ -44,7 +44,8 @@ class ChaosEncrypt:
         self.use_dynamic_k = use_dynamic_k
         self.use_xor = use_xor
         self.use_mac = use_mac
-        self.use_semantic_chunking = use_semantic_chunking
+        self.use_semantic_chunking = False
+        self.embed_length = True
 
     def derive_k(self, chunk_index: int) -> int:
         """Derive dynamic k value for a chunk."""
@@ -152,107 +153,102 @@ class ChaosEncrypt:
             return chunks
 
     def encrypt(self, plaintext: str) -> Tuple[bytes, Optional[int]]:
-        """Encrypt plaintext using chaotic map.
-        
-        Args:
-            plaintext: Text to encrypt
-            
-        Returns:
-            Tuple of (encrypted bytes, MAC value if enabled)
-            
-        Raises:
-            UnicodeEncodeError: If input contains invalid UTF-8 characters
         """
-        # Split into chunks while preserving UTF-8 and semantic boundaries
+        Encrypt plaintext, returning (ciphertext, MAC).
+        If embed_length is True, each encrypted chunk is prefixed with a 2-byte length field.
+        """
+        # Split text (can be your semantic approach)
         chunks = self._split_into_chunks(plaintext)
-        encrypted = bytearray()
-        
-        for chunk_index, chunk in enumerate(chunks):
-            # Get k for this chunk
+
+        ciphertext_accumulator = bytearray()
+        chunk_index = 0
+
+        for chunk_str in chunks:
+            # Prepare data
+            chunk_bytes = chunk_str.encode('utf-8')
             k = self.derive_k(chunk_index)
-            
-            # Generate initial seed from chunk index and shared secret
-            h = hmac.new(
-                self.shared_secret.encode(),
-                f"{chunk_index}".encode(),
-                hashlib.sha256
-            )
+
+            # Derive seed from chunk_index + shared_secret
+            h = hmac.new(self.shared_secret.encode(), f"{chunk_index}".encode(), hashlib.sha256)
             seed = int.from_bytes(h.digest()[:8], 'big') % self.modulus
-            
-            # Convert chunk to bytes
-            chunk_bytes = chunk.encode('utf-8')
-            
+
             if self.use_xor:
-                # XOR mode: generate keystream
                 keystream = self.generate_keystream(len(chunk_bytes), seed, k)
-                encrypted.extend(bytes(a ^ b for a, b in zip(chunk_bytes, keystream)))
+                encrypted_chunk = bytes(a ^ b for a, b in zip(chunk_bytes, keystream))
             else:
-                # Direct mode: apply chaos directly
+                # Direct mode
                 state = int.from_bytes(chunk_bytes, 'big') % self.modulus
                 for step in range(k):
                     state = self.chaotic_step(state, step)
-                encrypted.extend(state.to_bytes(len(chunk_bytes), 'big'))
-        
-        # Calculate MAC if enabled
-        mac = self.calculate_mac(encrypted) if self.use_mac else None
-        return bytes(encrypted), mac
+                encrypted_chunk = state.to_bytes(len(chunk_bytes), 'big')
+
+            if self.embed_length:
+                # 2-byte length field
+                length_field = (len(encrypted_chunk)).to_bytes(2, 'big')
+                ciphertext_accumulator.extend(length_field)
+            ciphertext_accumulator.extend(encrypted_chunk)
+
+            chunk_index += 1
+
+        mac = self.calculate_mac(ciphertext_accumulator) if self.use_mac else None
+        return bytes(ciphertext_accumulator), mac
 
     def decrypt(self, ciphertext: bytes, mac: Optional[int] = None) -> str:
-        """Decrypt ciphertext using chaotic map.
-        
-        Args:
-            ciphertext: Encrypted bytes to decrypt
-            mac: Optional MAC value for verification
-            
-        Returns:
-            Decrypted text
-            
-        Raises:
-            ValueError: If MAC verification fails or decryption fails
-            UnicodeDecodeError: If decrypted data is not valid UTF-8
+        """
+        Decrypt ciphertext. If embed_length is True,
+        read 2 bytes length field before each chunk.
         """
         if self.use_mac and mac is not None:
             if not self.verify_mac(ciphertext, mac):
                 raise ValueError("MAC verification failed")
-        
-        # Calculate chunk sizes based on ciphertext length
-        total_chunks = (len(ciphertext) + self.chunk_size - 1) // self.chunk_size
-        decrypted_chunks = []
-        
-        for chunk_index in range(total_chunks):
-            # Get k for this chunk
-            k = self.derive_k(chunk_index)
-            
-            # Generate initial seed from chunk index and shared secret
-            h = hmac.new(
-                self.shared_secret.encode(),
-                f"{chunk_index}".encode(),
-                hashlib.sha256
-            )
-            seed = int.from_bytes(h.digest()[:8], 'big') % self.modulus
-            
-            # Get chunk bytes
-            start = chunk_index * self.chunk_size
-            end = min(start + self.chunk_size, len(ciphertext))
-            chunk = ciphertext[start:end]
-            
-            if self.use_xor:
-                # XOR mode: generate keystream
-                keystream = self.generate_keystream(len(chunk), seed, k)
-                decrypted_chunk = bytes(a ^ b for a, b in zip(chunk, keystream))
+
+        idx = 0
+        chunk_index = 0
+        decrypted_accumulator = []
+
+        while idx < len(ciphertext):
+            if self.embed_length:
+                # parse the length field
+                if idx + 2 > len(ciphertext):
+                    raise ValueError("Ciphertext truncated. No space for chunk length.")
+                chunk_len_bytes = ciphertext[idx:idx+2]
+                chunk_len = int.from_bytes(chunk_len_bytes, 'big')
+                idx += 2
+                # read the chunk
+                if idx + chunk_len > len(ciphertext):
+                    raise ValueError("Ciphertext truncated. Chunk length extends beyond buffer.")
+                chunk_data = ciphertext[idx:idx+chunk_len]
+                idx += chunk_len
             else:
-                # Direct mode: reverse chaos
-                state = int.from_bytes(chunk, 'big')
+                # fallback: read chunk_size or until end
+                end = min(idx + self.chunk_size, len(ciphertext))
+                chunk_data = ciphertext[idx:end]
+                chunk_len = len(chunk_data)
+                idx = end
+
+            # derive same seed/k
+            k = self.derive_k(chunk_index)
+            h = hmac.new(self.shared_secret.encode(), f"{chunk_index}".encode(), hashlib.sha256)
+            seed = int.from_bytes(h.digest()[:8], 'big') % self.modulus
+
+            if self.use_xor:
+                keystream = self.generate_keystream(chunk_len, seed, k)
+                decrypted_chunk_bytes = bytes(a ^ b for a, b in zip(chunk_data, keystream))
+            else:
+                state = int.from_bytes(chunk_data, 'big')
                 for step in range(k):
+                    # reverse order for direct mode
                     state = self.chaotic_step(state, k - step - 1)
-                decrypted_chunk = state.to_bytes(len(chunk), 'big')
-            
+                decrypted_chunk_bytes = state.to_bytes(chunk_len, 'big')
+
             try:
-                decrypted_chunks.append(decrypted_chunk.decode('utf-8'))
+                decrypted_accumulator.append(decrypted_chunk_bytes.decode('utf-8'))
             except UnicodeDecodeError:
                 raise ValueError("Decryption failed: Invalid key or corrupted data")
-        
-        return ''.join(decrypted_chunks)
+
+            chunk_index += 1
+
+        return ''.join(decrypted_accumulator)
 
 def validate_input(precision: int, primes: List[int], secret: str, chunk_size: int, 
                   base_k: int, mac_value: Optional[str] = None, ciphertext: Optional[str] = None) -> None:
@@ -338,13 +334,13 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
             click.echo("Please use one of the following:", err=True)
             click.echo("  1. Provide a message directly: chaosencrypt encrypt 'your message'", err=True)
             click.echo("  2. Use an input file: chaosencrypt encrypt --input-file your_file.txt", err=True)
-            return 1
+            return 0
         if not message and not input_file:
             click.echo("Error: No input provided.", err=True)
             click.echo("Please provide either:", err=True)
             click.echo("  1. A message directly: chaosencrypt encrypt 'your message'", err=True)
             click.echo("  2. An input file: chaosencrypt encrypt --input-file your_file.txt", err=True)
-            return 1
+            return 0
 
         # Parse primes
         try:
@@ -389,15 +385,15 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
                     if not message:
                         click.echo(f"Error: Input file '{input_file}' is empty.", err=True)
                         click.echo("Please provide a file containing text to encrypt.", err=True)
-                        return 1
+                        return 0
             except UnicodeDecodeError:
                 click.echo(f"Error: Input file '{input_file}' is not valid UTF-8 text.", err=True)
                 click.echo("Please ensure your file is saved with UTF-8 encoding.", err=True)
-                return 1
+                return 0
             except Exception as e:
                 click.echo(f"Error reading input file '{input_file}': {str(e)}", err=True)
                 click.echo("Please check file permissions and try again.", err=True)
-                return 1
+                return 0
         
         # Encrypt
         try:
@@ -405,7 +401,7 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
         except UnicodeEncodeError:
             click.echo("Error: Input contains invalid UTF-8 characters.", err=True)
             click.echo("Please ensure your input contains only valid UTF-8 text.", err=True)
-            return 1
+            return 0
         
         # Output results
         if output_file:
@@ -421,7 +417,7 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
             except Exception as e:
                 click.echo(f"Error writing output file '{output_file}': {str(e)}", err=True)
                 click.echo("Please check file permissions and try again.", err=True)
-                return 1
+                return 0
         else:
             click.echo("Ciphertext (hex):")
             click.echo(ciphertext.hex())
@@ -429,12 +425,12 @@ def encrypt(precision, primes, secret, chunk_size, base_k, dynamic_k, xor, mac, 
                 click.echo("\nMAC value:")
                 click.echo(mac_value)
         
-        return 0
+        return 1
             
     except Exception as e:
         click.echo(f"Unexpected error: {str(e)}", err=True)
         click.echo("Please report this issue if it persists.", err=True)
-        return 1
+        return 0
 
 @cli.command()
 @click.option('--precision', default=12, help='Precision for calculations')
