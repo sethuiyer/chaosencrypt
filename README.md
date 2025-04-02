@@ -17,9 +17,19 @@
 
 <img src="./logo.png" width="256"/>
 
-**CHAOSENCRYPT** (PCE-100x) is an experimental, prime-fueled, keystream-based cipher that marries deterministic chaos with encryption, featuring a unique stealth key exchange mechanism and emergent semantic properties.
 
-**Disclaimer:** CHAOSENCRYPT is an experimental research project exploring novel concepts in chaos-based cryptography. It has not undergone formal cryptographic review or standardization (like NIST approval) and should **not** be used for protecting sensitive data in production environments. Standard, vetted algorithms (e.g., AES, ChaCha20) are recommended for such purposes.
+**CHAOSENCRYPT** is an experimental cryptographic framework that explores the intersection of **deterministic chaos, prime dynamics**, and **semantic structure**. It implements a **prime-fueled keystream cipher** with **chunk-wise HMAC seeding**, **dynamic step chaos iteration**, and a **stealthy key signal mechanism (Orbit Break)**—designed as a **research engine** to study entropy, structural obfuscation, and emergent phenomena like **Chaotic Structural Echo (CSE)**.
+
+> 🧪 Not a standard cipher—**a chaos laboratory wrapped in code.**
+
+- Combines **deterministic chaotic maps** with modern cryptographic layering (HMAC-SHA256).
+- Investigates **semantic leakage**, statistical entropy, and structured noise.
+- Passes **14/15 NIST SP800-22 tests**, demonstrating high-quality randomness.
+- Features a full **CLI**, **test suite**, and **interactive demo site**.
+
+**Use for exploration, insight, and experimentation—not production security.**
+
+---
 
 ## 🚀 Core Concepts
 
