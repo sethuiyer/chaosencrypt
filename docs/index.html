@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en" class=""> <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChaosEncrypt Demo</title>
@@ -14,7 +13,8 @@
     <style>
       @font-face {
         font-family: 'LucideIcons';
-        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+        /* Updated CDN link for stability */
+        src: url(https://unpkg.com/lucide-static@latest/font/Lucide.ttf) format('truetype');
       }
       .lucide {
         font-family: 'LucideIcons';
@@ -25,13 +25,17 @@
         line-height: 1;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        display: inline-block; /* Ensure icons align correctly */
-        vertical-align: middle; /* Align icons vertically */
+        display: inline-block;
+        vertical-align: middle;
       }
       /* Basic styles */
       body {
         font-family: 'Inter', sans-serif;
+        /* Default light mode background */
         background-color: #f8fafc; /* Tailwind gray-50 */
+        /* Dark mode background */
+        @apply dark:bg-gray-900;
+        transition: background-color 0.3s ease-in-out;
       }
       /* Custom scrollbar for output areas */
       textarea::-webkit-scrollbar {
@@ -39,15 +43,19 @@
       }
       textarea::-webkit-scrollbar-track {
         background: #e5e7eb; /* Tailwind gray-200 */
+        @apply dark:bg-gray-700;
         border-radius: 10px;
       }
       textarea::-webkit-scrollbar-thumb {
         background-color: #9ca3af; /* Tailwind gray-400 */
+        @apply dark:bg-gray-500;
         border-radius: 10px;
         border: 2px solid #e5e7eb; /* Tailwind gray-200 */
+        @apply dark:border-gray-700;
       }
       textarea::-webkit-scrollbar-thumb:hover {
         background-color: #6b7280; /* Tailwind gray-500 */
+        @apply dark:bg-gray-400;
       }
       /* Style for disabled buttons */
       button:disabled {
@@ -56,173 +64,246 @@
       }
       /* Style for message area */
       #message-area {
-          min-height: 2rem; /* Ensure space even when empty */
+          min-height: 2.5rem; /* Ensure space even when empty, adjusted for padding */
           transition: all 0.3s ease-in-out;
       }
+      /* Ensure icons in buttons don't prevent clicks */
+      button .lucide {
+          pointer-events: none;
+      }
     </style>
+    <script>
+        // Tailwind dark mode configuration (using class strategy)
+        tailwind.config = {
+          darkMode: 'class', // Enable class-based dark mode
+          theme: {
+            extend: {
+              // Add custom colors or other extensions if needed
+            }
+          }
+        }
+      </script>
 </head>
 <body class="p-4 md:p-8">
 
-    <div id="app-container" class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-lg">
-        <header class="mb-6 md:mb-8 text-center">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2 flex items-center justify-center space-x-2">
-                 <span class="lucide" style="font-size: 2rem; color: #3b82f6;">&#xe86d;</span> <span>ChaosEncrypt Demo</span>
+    <div id="app-container" class="max-w-4xl mx-auto bg-white dark:bg-gray-800 p-6 md:p-8 rounded-xl shadow-lg transition-colors duration-300">
+        <header class="mb-6 md:mb-8 text-center relative">
+            <button id="theme-toggle" type="button" class="absolute top-0 right-0 p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm">
+                <span id="theme-toggle-dark-icon" class="lucide hidden" style="font-size: 1.25rem;">&#xe9a5;</span> <span id="theme-toggle-light-icon" class="lucide hidden" style="font-size: 1.25rem;">&#xeae3;</span> </button>
+
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center justify-center space-x-2">
+                 <span class="lucide" style="font-size: 2rem; color: #3b82f6;">&#xea6f;</span>
+                 <span>ChaosEncrypt Demo</span>
             </h1>
-            <p class="text-gray-600">An interactive demo of the ChaosEncrypt algorithm.</p>
+            <p class="text-gray-600 dark:text-gray-400">An interactive demo of the ChaosEncrypt algorithm.</p>
         </header>
 
-        <div id="message-area" class="mb-4 p-3 rounded-lg text-sm font-medium text-center">
+        <div id="message-area" class="mb-4 p-3 rounded-lg text-sm font-medium text-center transition-colors duration-300">
             </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
 
             <div class="space-y-4">
-                <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Input & Secret</h2>
+                <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-600 pb-2 mb-4">Input & Secret</h2>
                 <div>
-                    <label for="plaintext" class="block text-sm font-medium text-gray-700 mb-1">Plaintext / Ciphertext (Hex)</label>
-                    <textarea id="plaintext" rows="6" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm resize-none"></textarea>
+                    <label for="plaintext" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plaintext / Ciphertext (Hex)</label>
+                    <textarea id="plaintext" rows="6" class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm resize-none dark:placeholder-gray-400"></textarea>
                 </div>
                 <div>
-                    <label for="secret" class="block text-sm font-medium text-gray-700 mb-1">Shared Secret</label>
-                    <input type="password" id="secret" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
+                    <label for="secret" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Shared Secret</label>
+                    <input type="password" id="secret" class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
                 </div>
                  <div>
-                    <label for="mac-input" class="block text-sm font-medium text-gray-700 mb-1">MAC (for Decryption)</label>
-                    <input type="text" id="mac-input" placeholder="Enter MAC value if decrypting..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
+                    <label for="mac-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">MAC (for Decryption)</label>
+                    <input type="text" id="mac-input" placeholder="Enter MAC value if decrypting..." class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm dark:placeholder-gray-400">
                 </div>
             </div>
 
             <div class="space-y-4">
-                 <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">Configuration</h2>
+                 <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-600 pb-2 mb-4">Configuration</h2>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="precision" class="block text-sm font-medium text-gray-700 mb-1">Precision</label>
-                        <input type="number" id="precision" value="12" min="1" max="100" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
+                        <label for="precision" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Precision</label>
+                        <input type="number" id="precision" value="12" min="1" max="100" class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
                     </div>
                     <div>
-                        <label for="chunk-size" class="block text-sm font-medium text-gray-700 mb-1">Chunk Size</label>
-                        <input type="number" id="chunk-size" value="16" min="1" max="1024" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
+                        <label for="chunk-size" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chunk Size</label>
+                        <input type="number" id="chunk-size" value="16" min="1" max="1024" class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
                     </div>
                 </div>
                  <div>
-                    <label for="primes" class="block text-sm font-medium text-gray-700 mb-1">Primes (comma-separated)</label>
-                    <input type="text" id="primes" value="9973" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
+                    <label for="primes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Primes (comma-separated)</label>
+                    <input type="text" id="primes" value="9973" class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm dark:placeholder-gray-400">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="base-k" class="block text-sm font-medium text-gray-700 mb-1">Base K</label>
-                        <input type="number" id="base-k" value="6" min="1" max="100" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
+                        <label for="base-k" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Base K</label>
+                        <input type="number" id="base-k" value="6" min="1" max="100" class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
                     </div>
                     <div class="flex items-center pt-6 space-x-4">
                         <div class="flex items-center">
-                            <input id="dynamic-k" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                            <label for="dynamic-k" class="ml-2 block text-sm text-gray-900">Dynamic K</label>
+                            <input id="dynamic-k" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-offset-gray-800">
+                            <label for="dynamic-k" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Dynamic K</label>
                         </div>
                          <div class="flex items-center">
-                            <input id="use-xor" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                            <label for="use-xor" class="ml-2 block text-sm text-gray-900">Use XOR</label>
+                            <input id="use-xor" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-offset-gray-800">
+                            <label for="use-xor" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Use XOR</label>
                         </div>
                     </div>
                  </div>
                  <div class="flex items-center space-x-4 pt-2">
                      <div class="flex items-center">
-                        <input id="use-mac" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="use-mac" class="ml-2 block text-sm text-gray-900">Use MAC</label>
+                        <input id="use-mac" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-offset-gray-800">
+                        <label for="use-mac" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Use MAC</label>
                     </div>
                      <div class="flex items-center">
-                        <input id="embed-length" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="embed-length" class="ml-2 block text-sm text-gray-900">Embed Length</label>
+                        <input id="embed-length" type="checkbox" checked class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-offset-gray-800">
+                        <label for="embed-length" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Embed Length</label>
                     </div>
                  </div>
             </div>
         </div>
 
         <div class="mt-6 md:mt-8 flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-            <button id="encrypt-btn" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-                <span class="lucide mr-2">&#xe86d;</span> Encrypt
+            <button id="encrypt-btn" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+                <span class="lucide mr-2">&#xe86d;</span>
+                Encrypt
             </button>
-            <button id="decrypt-btn" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                <span class="lucide mr-2">&#xe87a;</span> Decrypt
+            <button id="decrypt-btn" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-gray-300 dark:border-gray-500 text-base font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+                 <span class="lucide mr-2">&#xeb1c;</span>
+                Decrypt
             </button>
         </div>
 
-        <div class="mt-6 md:mt-8 pt-6 border-t">
-             <h2 class="text-xl font-semibold text-gray-700 mb-4">Output</h2>
+        <div class="mt-6 md:mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
+             <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Output</h2>
              <div class="space-y-4">
                  <div>
-                    <label for="output" class="block text-sm font-medium text-gray-700 mb-1">Result</label>
-                    <textarea id="output" rows="6" readonly class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 shadow-sm resize-none"></textarea>
+                    <label for="output" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Result</label>
+                    <textarea id="output" rows="6" readonly class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg shadow-sm resize-none"></textarea>
                  </div>
                  <div>
-                    <label for="mac-output" class="block text-sm font-medium text-gray-700 mb-1">MAC Output</label>
-                    <input type="text" id="mac-output" readonly class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 shadow-sm">
+                    <label for="mac-output" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">MAC Output</label>
+                    <input type="text" id="mac-output" readonly class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg shadow-sm">
                  </div>
              </div>
         </div>
 
-        <footer class="mt-8 text-center text-sm text-gray-500">
+        <footer class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
             <p>ChaosEncrypt Demo - Using Backbone.js, Tailwind CSS, and Web Crypto API.</p>
         </footer>
     </div>
 
     <script>
-        // --- Polyfills and Helpers ---
+        // --- Dark Mode Handler ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const htmlElement = document.documentElement; // Get the <html> element
 
-        // TextEncoder/TextDecoder polyfill might be needed for older environments, but modern browsers support them.
+        // Function to set theme
+        function setTheme(isDark) {
+            if (isDark) {
+                htmlElement.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
+                localStorage.setItem('color-theme', 'dark');
+            } else {
+                htmlElement.classList.remove('dark');
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+                localStorage.setItem('color-theme', 'light');
+            }
+        }
+
+        // Check initial theme preference
+        const storedTheme = localStorage.getItem('color-theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (storedTheme === 'dark' || (!storedTheme && prefersDark)) {
+            setTheme(true);
+        } else {
+            setTheme(false); // Default to light
+        }
+
+        // Add listener for the toggle button
+        themeToggleBtn.addEventListener('click', () => {
+            setTheme(!htmlElement.classList.contains('dark'));
+        });
+
+
+        // --- Polyfills and Helpers ---
         const textEncoder = new TextEncoder();
         const textDecoder = new TextDecoder();
 
-        // Helper to convert ArrayBuffer to Hex String
         function bufferToHex(buffer) {
-            return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
+            // Ensure buffer is ArrayBuffer or Uint8Array
+             const uint8Array = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+            return Array.prototype.map.call(uint8Array, x => ('00' + x.toString(16)).slice(-2)).join('');
         }
 
-        // Helper to convert Hex String to Uint8Array
         function hexToUint8Array(hexString) {
+            if (typeof hexString !== 'string') {
+                throw new Error("Input must be a string.");
+            }
             if (hexString.length % 2 !== 0) {
                 throw new Error("Invalid hex string length.");
             }
-            const byteArray = new Uint8Array(hexString.length / 2);
+            // Remove potential "0x" prefix
+            const cleanHexString = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+             if (!/^[0-9a-fA-F]*$/.test(cleanHexString)) {
+                 throw new Error("Invalid characters in hex string.");
+             }
+
+            const byteArray = new Uint8Array(cleanHexString.length / 2);
             for (let i = 0; i < byteArray.length; i++) {
-                byteArray[i] = parseInt(hexString.substr(i * 2, 2), 16);
+                byteArray[i] = parseInt(cleanHexString.substr(i * 2, 2), 16);
             }
             return byteArray;
         }
 
-        // Helper to convert ArrayBuffer/Uint8Array to BigInt
         function bufferToBigInt(buffer) {
-            const hex = bufferToHex(buffer);
+             const uint8Array = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+            const hex = bufferToHex(uint8Array);
             if (hex.length === 0) return BigInt(0);
             return BigInt(`0x${hex}`);
         }
 
-        // Helper to convert BigInt to Uint8Array (minimal length)
         function bigIntToUint8Array(bigIntValue) {
+            if (typeof bigIntValue !== 'bigint') {
+                 throw new Error("Input must be a BigInt.");
+            }
             if (bigIntValue < 0) {
                 throw new Error("Cannot convert negative BigInt to Uint8Array");
             }
             if (bigIntValue === BigInt(0)) {
-                return new Uint8Array(0); // Or Uint8Array([0]) depending on desired behavior for 0
+                return new Uint8Array(0);
             }
             let hex = bigIntValue.toString(16);
             if (hex.length % 2) { hex = '0' + hex; }
             return hexToUint8Array(hex);
         }
 
-        // Helper for MAC Prime (BigInt)
         const MAC_PRIME = BigInt("1" + "0".repeat(64) + "67");
 
         // --- ChaosEncrypt Logic (Ported to JavaScript) ---
         class ChaosEncryptJS {
             constructor(config) {
+                // Validate config types
+                if (typeof config.precision !== 'number' || config.precision < 1) throw new Error("Invalid precision");
+                if (!Array.isArray(config.primes) || config.primes.length === 0) throw new Error("Primes must be a non-empty array");
+                if (typeof config.sharedSecret !== 'string') throw new Error("Shared secret must be a string");
+                if (typeof config.chunkSize !== 'number' || config.chunkSize < 1) throw new Error("Invalid chunk size");
+                if (typeof config.baseK !== 'number' || config.baseK < 1) throw new Error("Invalid base K");
+                // ... add checks for boolean types if needed
+
                 this.precision = config.precision;
-                // Use BigInt for modulus to handle large precision values safely
                 this.modulus = BigInt(10) ** BigInt(config.precision);
-                // Ensure primes are BigInts
-                this.primes = config.primes.map(p => BigInt(p));
-                if (this.primes.length === 0) {
-                    throw new Error("At least one prime number must be provided.");
-                }
+                this.primes = config.primes.map(p => {
+                    const primeBigInt = BigInt(p);
+                    if (primeBigInt < 2) throw new Error(`Invalid prime number: ${p}`);
+                    return primeBigInt;
+                });
                 this.sharedSecret = config.sharedSecret;
                 this.chunkSize = config.chunkSize;
                 this.baseK = config.baseK;
@@ -230,157 +311,151 @@
                 this.useXor = config.useXor;
                 this.useMac = config.useMac;
                 this.embedLength = config.embedLength;
-                // Semantic chunking is complex, using simple byte-based chunking
-                this.useSemanticChunking = false;
-
-                // Pre-import HMAC key for efficiency
-                this.hmacKey = null; // Will be initialized asynchronously
+                this.useSemanticChunking = false; // Not implemented
+                this.hmacKey = null;
             }
 
-            // Initialize HMAC key (must be called before operations needing it)
             async initHmacKey() {
+                // Only initialize if needed and not already done
                 if (!this.hmacKey && this.sharedSecret) {
-                    const keyData = textEncoder.encode(this.sharedSecret);
-                    this.hmacKey = await crypto.subtle.importKey(
-                        "raw",
-                        keyData,
-                        { name: "HMAC", hash: "SHA-256" },
-                        false, // not extractable
-                        ["sign", "verify"] // key usages
-                    );
+                    try {
+                        const keyData = textEncoder.encode(this.sharedSecret);
+                        this.hmacKey = await crypto.subtle.importKey(
+                            "raw", keyData, { name: "HMAC", hash: "SHA-256" },
+                            false, ["sign", "verify"]
+                        );
+                    } catch (e) {
+                        console.error("Error importing HMAC key:", e);
+                        throw new Error(`Failed to initialize HMAC key: ${e.message}`);
+                    }
                 } else if (!this.sharedSecret) {
-                    throw new Error("Shared secret is required for HMAC operations.");
+                    // Throw error only if MAC or dynamic K is actually used later
+                    // For now, allow initialization without secret if MAC/dynamicK are off
                 }
             }
 
-            // Derive dynamic k using HMAC-SHA256
             async deriveK(chunkIndex) {
                 if (!this.useDynamicK) {
                     return this.baseK;
                 }
-                if (!this.hmacKey) await this.initHmacKey();
+                if (!this.sharedSecret) throw new Error("Shared secret required for dynamic K.");
+                if (!this.hmacKey) await this.initHmacKey(); // Ensure key is ready
 
-                const indexData = textEncoder.encode(String(chunkIndex));
-                const hmacBuffer = await crypto.subtle.sign(
-                    "HMAC",
-                    this.hmacKey,
-                    indexData
-                );
-
-                // Use first 4 bytes of HMAC for derivation, convert to number
-                const hmacBytes = new Uint8Array(hmacBuffer.slice(0, 4));
-                const dataView = new DataView(hmacBytes.buffer);
-                const derivedInt = dataView.getUint32(0, false); // Big-endian
-
-                const derived = this.baseK + (derivedInt % 50);
-                return Math.max(derived, 1); // Ensure k >= 1
+                try {
+                    const indexData = textEncoder.encode(String(chunkIndex));
+                    const hmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, indexData);
+                    const hmacBytes = new Uint8Array(hmacBuffer.slice(0, 4));
+                    const dataView = new DataView(hmacBytes.buffer);
+                    const derivedInt = dataView.getUint32(0, false); // Big-endian
+                    const derived = this.baseK + (derivedInt % 50);
+                    return Math.max(derived, 1);
+                } catch (e) {
+                    console.error("Error deriving K:", e);
+                    throw new Error(`Failed to derive K for chunk ${chunkIndex}: ${e.message}`);
+                }
             }
 
-            // Calculate MAC using HMAC-SHA256
-            async calculateMac(data) {
-                if (!this.useMac) {
-                    return null;
-                }
+            async calculateMac(data /* Uint8Array */) {
+                if (!this.useMac) return null;
+                if (!this.sharedSecret) throw new Error("Shared secret required for MAC calculation.");
+                if (!(data instanceof Uint8Array)) throw new Error("Data must be a Uint8Array for MAC calculation.");
                 if (!this.hmacKey) await this.initHmacKey();
 
-                const hmacBuffer = await crypto.subtle.sign(
-                    "HMAC",
-                    this.hmacKey,
-                    data // data should be Uint8Array
-                );
-
-                // Convert full HMAC to BigInt and apply modulus
-                const macBigInt = bufferToBigInt(hmacBuffer);
-                return macBigInt % MAC_PRIME;
+                try {
+                    const hmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, data);
+                    const macBigInt = bufferToBigInt(hmacBuffer);
+                    return macBigInt % MAC_PRIME;
+                } catch (e) {
+                    console.error("Error calculating MAC:", e);
+                    throw new Error(`MAC calculation failed: ${e.message}`);
+                }
             }
 
-             // Verify MAC using HMAC-SHA256
-             async verifyMac(data, receivedMacStr) {
-                if (!this.useMac) {
-                    return true; // MAC not enabled, always pass
-                }
-                if (!receivedMacStr) {
-                     throw new Error("MAC value required for verification but not provided.");
-                }
+             async verifyMac(data /* Uint8Array */, receivedMacStr /* string */) {
+                if (!this.useMac) return true;
+                if (!this.sharedSecret) throw new Error("Shared secret required for MAC verification.");
+                if (!(data instanceof Uint8Array)) throw new Error("Data must be a Uint8Array for MAC verification.");
+                if (!receivedMacStr) throw new Error("MAC value required for verification but not provided.");
+                if (!this.hmacKey) await this.initHmacKey();
 
                 try {
                     const receivedMac = BigInt(receivedMacStr);
                     const calculatedMac = await this.calculateMac(data);
-                    // Constant-time comparison is ideal, but BigInt comparison is tricky.
-                    // For this demo, direct comparison is used.
+                    // Basic comparison (not constant time)
                     return calculatedMac === receivedMac;
                 } catch (e) {
                     console.error("MAC verification error:", e);
-                    throw new Error(`Invalid MAC value format: ${receivedMacStr}`);
+                    // Distinguish between format error and calculation error if possible
+                    if (e instanceof SyntaxError || e instanceof TypeError) {
+                         throw new Error(`Invalid MAC value format: ${receivedMacStr}`);
+                    }
+                    throw new Error(`MAC verification failed: ${e.message}`);
                 }
             }
 
-
-            // Perform one step of the chaotic map using BigInt
-            chaoticStep(state, step) {
+            chaoticStep(state /* BigInt */, step /* number */) {
                 const prime = this.primes[step % this.primes.length];
-                // Use BigInt for multiplication and modulo
                 return (state * prime) % this.modulus;
             }
 
-            // Generate keystream bytes using chaotic map
-            generateKeystream(length, seedBigInt, k) {
-                let state = seedBigInt; // Already a BigInt
-                // Initial chaotic steps
+            generateKeystream(length /* number */, seedBigInt /* BigInt */, k /* number */) {
+                if (length <= 0) return new Uint8Array(0);
+                let state = seedBigInt;
                 for (let step = 0; step < k; step++) {
                     state = this.chaoticStep(state, step);
                 }
 
-                // Generate keystream bytes
                 const keystream = new Uint8Array(length);
                 let tempState = state;
                 for (let i = 0; i < length; i++) {
-                    // Use BigInt modulo for byte generation
-                    keystream[i] = Number(tempState % 256n); // Convert result to Number for Uint8Array
-                    tempState = this.chaoticStep(tempState, k + i); // Continue stepping
+                    keystream[i] = Number(tempState % 256n);
+                    // Avoid unnecessary steps if length is large by cycling step index
+                    tempState = this.chaoticStep(tempState, (k + i) % this.primes.length); // Use modulo prime length for step index
                 }
                 return keystream;
             }
 
-            // Simple UTF-8 safe chunking based on byte size
-            _splitIntoChunks(text) {
-                const chunks = [];
-                const bytes = textEncoder.encode(text);
-                let currentChunkStart = 0;
+             _splitIntoChunks(text /* string */) {
+                 const chunks = [];
+                 const bytes = textEncoder.encode(text);
+                 let currentChunkStart = 0;
 
-                while (currentChunkStart < bytes.length) {
-                    const chunkEnd = Math.min(currentChunkStart + this.chunkSize, bytes.length);
-                    // Find the last UTF-8 character boundary within the chunk limit
-                    let actualEnd = chunkEnd;
-                    while (actualEnd > currentChunkStart) {
-                         // Check if the byte at actualEnd is a continuation byte (starts with 10xxxxxx)
-                        if ((bytes[actualEnd] & 0xC0) !== 0x80) {
-                            break; // Found the start of a character or a single-byte char
-                        }
-                        actualEnd--;
-                    }
-                     // If we couldn't find a boundary (e.g., single huge char > chunksize), take the whole chunk
-                    if (actualEnd === currentChunkStart && chunkEnd > currentChunkStart) {
-                       actualEnd = chunkEnd;
-                    }
-                    // If actualEnd is still at the start, it implies the first character itself is larger than chunk size or empty chunk.
-                    // Force progress by taking at least one byte if possible, or the defined chunk size.
+                 while (currentChunkStart < bytes.length) {
+                     const chunkEnd = Math.min(currentChunkStart + this.chunkSize, bytes.length);
+                     let actualEnd = chunkEnd;
+                     // Simple boundary check (doesn't guarantee perfect UTF-8 split but avoids breaking mid-char often)
+                     while (actualEnd > currentChunkStart && (bytes[actualEnd] & 0xC0) === 0x80) { // is continuation byte
+                         actualEnd--;
+                     }
+                     // If stuck at start, force progress
                      if (actualEnd === currentChunkStart && currentChunkStart < bytes.length) {
-                         actualEnd = Math.min(currentChunkStart + this.chunkSize, bytes.length);
+                          actualEnd = chunkEnd;
                      }
 
+                     const chunkBytes = bytes.slice(currentChunkStart, actualEnd);
+                     // Important: Decode the chunk *back* to string if processing expects strings,
+                     // or keep as bytes if processing expects bytes. Here we decode.
+                     try {
+                         chunks.push(textDecoder.decode(chunkBytes));
+                     } catch (e) {
+                         // Fallback if decode fails (e.g., split happened mid-char despite check)
+                         console.warn("UTF-8 decode failed for chunk, using raw bytes chunk instead.");
+                         // If keeping as bytes: chunks.push(chunkBytes);
+                         // If forcing decode: chunks.push(textDecoder.decode(chunkBytes, {stream: true})); // or handle error
+                         chunks.push(textDecoder.decode(chunkBytes, { ignoreBOM: true })); // Try simple decode
+                     }
+                     currentChunkStart = actualEnd;
+                 }
+                 // Filter out potentially empty chunks if split logic creates them
+                 return chunks.filter(chunk => chunk.length > 0);
+             }
 
-                    const chunkBytes = bytes.slice(currentChunkStart, actualEnd);
-                    chunks.push(textDecoder.decode(chunkBytes)); // Decode back to string for processing consistency
-                    currentChunkStart = actualEnd;
+
+            async encrypt(plaintext /* string */) {
+                if (!this.sharedSecret && (this.useMac || this.useDynamicK)) {
+                     throw new Error("Shared secret cannot be empty when MAC or Dynamic K is enabled.");
                 }
-                return chunks;
-            }
-
-            // Encrypt plaintext
-            async encrypt(plaintext) {
-                if (!this.sharedSecret) throw new Error("Shared secret cannot be empty.");
-                await this.initHmacKey(); // Ensure HMAC key is ready
+                await this.initHmacKey(); // Ensure HMAC key is ready if needed
 
                 const chunks = this._splitIntoChunks(plaintext);
                 const ciphertextAccumulator = []; // Store Uint8Arrays
@@ -388,14 +463,23 @@
 
                 for (const chunkStr of chunks) {
                     const chunkBytes = textEncoder.encode(chunkStr);
+                    if (chunkBytes.length === 0) continue; // Skip empty chunks
+
                     const k = await this.deriveK(chunkIndex);
 
-                    // Derive seed from chunk_index + shared_secret using HMAC
-                    const indexData = textEncoder.encode(String(chunkIndex));
-                    const seedHmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, indexData);
-                    // Use first 8 bytes for seed, convert to BigInt
-                    const seedBytes = new Uint8Array(seedHmacBuffer.slice(0, 8));
-                    const seedBigInt = bufferToBigInt(seedBytes) % this.modulus; // Ensure seed is within modulus
+                    // Derive seed using HMAC (only if secret is present)
+                    let seedBigInt;
+                    if (this.sharedSecret) {
+                         const indexData = textEncoder.encode(String(chunkIndex));
+                         const seedHmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, indexData);
+                         const seedBytes = new Uint8Array(seedHmacBuffer.slice(0, 8));
+                         seedBigInt = bufferToBigInt(seedBytes) % this.modulus;
+                    } else {
+                         // Fallback seed if no secret (less secure, for demo/testing only)
+                         seedBigInt = BigInt(chunkIndex * 997) % this.modulus; // Simple fallback
+                         console.warn("Encrypting without shared secret. Using insecure fallback seed.");
+                    }
+
 
                     let encryptedChunkBytes;
                     if (this.useXor) {
@@ -405,43 +489,16 @@
                             encryptedChunkBytes[i] = chunkBytes[i] ^ keystream[i];
                         }
                     } else {
-                        // Direct mode (less common, needs careful implementation)
-                        // Convert chunk bytes to a BigInt state
-                        let state = bufferToBigInt(chunkBytes);
-                         if (state >= this.modulus) {
-                             // This case needs careful handling - how to represent bytes > modulus?
-                             // Option 1: Error out if chunk bytes as int > modulus
-                             // Option 2: Apply modulus (information loss?)
-                             // Option 3: Pad/adjust representation (complex)
-                             // For now, let's apply modulus, acknowledging potential issues
-                             console.warn("Direct mode: Chunk bytes as integer exceeds modulus. Applying modulus.");
-                             state = state % this.modulus;
-                         }
-
-                        for (let step = 0; step < k; step++) {
-                            state = this.chaoticStep(state, step);
-                        }
-                        // Convert resulting state back to bytes, potentially padding
-                        const stateBytes = bigIntToUint8Array(state);
-                        // Ensure the output byte length matches input for reversibility
-                        if (stateBytes.length < chunkBytes.length) {
-                             encryptedChunkBytes = new Uint8Array(chunkBytes.length);
-                             encryptedChunkBytes.set(stateBytes, chunkBytes.length - stateBytes.length); // Pad with leading zeros
-                        } else if (stateBytes.length > chunkBytes.length) {
-                            // This shouldn't happen if state was kept < modulus and input < modulus
-                            // If it does, likely truncation is needed, but signals an issue.
-                            console.warn("Direct mode: Encrypted state has more bytes than original chunk. Truncating.");
-                            encryptedChunkBytes = stateBytes.slice(stateBytes.length - chunkBytes.length);
-                        } else {
-                             encryptedChunkBytes = stateBytes;
-                        }
+                         throw new Error("Direct (non-XOR) mode is not supported in this demo.");
                     }
 
                     if (this.embedLength) {
-                        // Use DataView for precise byte writing
-                        const lengthBuffer = new ArrayBuffer(2); // 2 bytes for length
+                        const lengthBuffer = new ArrayBuffer(2);
                         const lengthView = new DataView(lengthBuffer);
-                        lengthView.setUint16(0, encryptedChunkBytes.length, false); // false for big-endian
+                        if (encryptedChunkBytes.length > 65535) {
+                             throw new Error(`Chunk size (${encryptedChunkBytes.length}) exceeds max length (65535) for embedding.`);
+                        }
+                        lengthView.setUint16(0, encryptedChunkBytes.length, false); // Big-endian
                         ciphertextAccumulator.push(new Uint8Array(lengthBuffer));
                     }
                     ciphertextAccumulator.push(encryptedChunkBytes);
@@ -449,7 +506,7 @@
                     chunkIndex += 1;
                 }
 
-                // Concatenate all Uint8Array chunks into one
+                // Concatenate all Uint8Array chunks
                 const totalLength = ciphertextAccumulator.reduce((sum, arr) => sum + arr.length, 0);
                 const finalCiphertext = new Uint8Array(totalLength);
                 let offset = 0;
@@ -458,119 +515,98 @@
                     offset += arr.length;
                 }
 
-                const mac = this.useMac ? await this.calculateMac(finalCiphertext) : null;
-                // Return BigInt MAC as string
+                const mac = await this.calculateMac(finalCiphertext);
                 return { ciphertext: finalCiphertext, mac: mac !== null ? mac.toString() : null };
             }
 
-             // Decrypt ciphertext
              async decrypt(ciphertext /* Uint8Array */, macStr /* string | null */) {
-                if (!this.sharedSecret) throw new Error("Shared secret cannot be empty.");
-                await this.initHmacKey(); // Ensure HMAC key is ready
+                 if (!this.sharedSecret && (this.useMac || this.useDynamicK)) {
+                      throw new Error("Shared secret cannot be empty when MAC or Dynamic K is enabled.");
+                 }
+                 await this.initHmacKey(); // Ensure HMAC key is ready if needed
 
-                if (this.useMac && macStr !== null) {
-                    const isValidMac = await this.verifyMac(ciphertext, macStr);
-                    if (!isValidMac) {
-                        throw new Error("MAC verification failed. Data may be tampered or key is incorrect.");
-                    }
-                } else if (this.useMac && macStr === null) {
-                    console.warn("MAC verification enabled, but no MAC value provided for decryption.");
-                    // Optionally throw an error here if strict MAC is required
-                    // throw new Error("MAC value required for verification but not provided.");
-                }
+                 // Verify MAC before proceeding (if enabled and provided)
+                 if (this.useMac && macStr) {
+                     const isValidMac = await this.verifyMac(ciphertext, macStr);
+                     if (!isValidMac) {
+                         throw new Error("MAC verification failed. Data may be tampered or key is incorrect.");
+                     }
+                 } else if (this.useMac && !macStr) {
+                     console.warn("MAC verification enabled, but no MAC value provided for decryption.");
+                     // Decide whether to proceed or throw error based on policy
+                 }
 
+                 let idx = 0;
+                 let chunkIndex = 0;
+                 const decryptedAccumulator = []; // Store strings
 
-                let idx = 0;
-                let chunkIndex = 0;
-                const decryptedAccumulator = []; // Store strings
+                 while (idx < ciphertext.length) {
+                     let chunkData;
+                     let chunkLen;
 
-                while (idx < ciphertext.length) {
-                    let chunkData;
-                    let chunkLen;
+                     if (this.embedLength) {
+                         if (idx + 2 > ciphertext.length) throw new Error("Ciphertext truncated: Not enough data for chunk length.");
+                         const lengthView = new DataView(ciphertext.buffer, ciphertext.byteOffset + idx, 2);
+                         chunkLen = lengthView.getUint16(0, false); // Big-endian
+                         idx += 2;
 
-                    if (this.embedLength) {
-                        if (idx + 2 > ciphertext.length) {
-                            throw new Error("Ciphertext truncated: Not enough data for chunk length.");
-                        }
-                        const lengthView = new DataView(ciphertext.buffer, ciphertext.byteOffset + idx, 2);
-                        chunkLen = lengthView.getUint16(0, false); // Big-endian
-                        idx += 2;
-
-                        if (idx + chunkLen > ciphertext.length) {
-                            throw new Error(`Ciphertext truncated: Declared chunk length ${chunkLen} exceeds remaining buffer size.`);
-                        }
-                        chunkData = ciphertext.slice(idx, idx + chunkLen);
-                        idx += chunkLen;
-                    } else {
-                        // Fallback: read chunk_size or until end (less reliable without embedded length)
-                        const end = Math.min(idx + this.chunkSize, ciphertext.length);
-                        if (end <= idx) break; // No more data
-                        chunkData = ciphertext.slice(idx, end);
-                        chunkLen = chunkData.length;
-                        idx = end;
-                    }
-
-                     if (chunkLen === 0) {
-                         // Handle potential zero-length chunks if they occur
-                         chunkIndex++;
-                         continue;
+                         if (idx + chunkLen > ciphertext.length) throw new Error(`Ciphertext truncated: Declared chunk length ${chunkLen} exceeds remaining buffer size.`);
+                         chunkData = ciphertext.slice(idx, idx + chunkLen);
+                         idx += chunkLen;
+                     } else {
+                         const end = Math.min(idx + this.chunkSize, ciphertext.length);
+                         if (end <= idx) break;
+                         chunkData = ciphertext.slice(idx, end);
+                         chunkLen = chunkData.length;
+                         idx = end;
                      }
 
-                    // Derive same seed/k
-                    const k = await this.deriveK(chunkIndex);
-                    const indexData = textEncoder.encode(String(chunkIndex));
-                    const seedHmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, indexData);
-                    const seedBytes = new Uint8Array(seedHmacBuffer.slice(0, 8));
-                    const seedBigInt = bufferToBigInt(seedBytes) % this.modulus;
+                      if (chunkLen === 0) {
+                          chunkIndex++;
+                          continue; // Skip zero-length chunks
+                      }
 
-                    let decryptedChunkBytes;
-                    if (this.useXor) {
-                        const keystream = this.generateKeystream(chunkLen, seedBigInt, k);
-                        decryptedChunkBytes = new Uint8Array(chunkLen);
-                        for (let i = 0; i < chunkLen; i++) {
-                            decryptedChunkBytes[i] = chunkData[i] ^ keystream[i];
-                        }
-                    } else {
-                        // Direct mode decryption (reverse steps) - Requires careful implementation
-                        let state = bufferToBigInt(chunkData);
-                         if (state >= this.modulus) {
-                             // If state > modulus occurred during encryption, reversing is complex.
-                             // Assuming state was kept < modulus for simplicity here.
-                             console.warn("Direct mode decryption: Input chunk data as integer might exceed modulus.");
-                              // state = state % this.modulus; // Re-applying modulus might not be correct for reversal
+                     // Derive same seed/k
+                     const k = await this.deriveK(chunkIndex);
+                     let seedBigInt;
+                     if (this.sharedSecret) {
+                          const indexData = textEncoder.encode(String(chunkIndex));
+                          const seedHmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, indexData);
+                          const seedBytes = new Uint8Array(seedHmacBuffer.slice(0, 8));
+                          seedBigInt = bufferToBigInt(seedBytes) % this.modulus;
+                     } else {
+                          seedBigInt = BigInt(chunkIndex * 997) % this.modulus; // Simple fallback
+                          console.warn("Decrypting without shared secret. Using insecure fallback seed.");
+                     }
+
+                     let decryptedChunkBytes;
+                     if (this.useXor) {
+                         const keystream = this.generateKeystream(chunkLen, seedBigInt, k);
+                         if (keystream.length !== chunkData.length) {
+                              throw new Error(`Internal error: Keystream length (${keystream.length}) does not match chunk data length (${chunkData.length}) for chunk ${chunkIndex}.`);
                          }
+                         decryptedChunkBytes = new Uint8Array(chunkLen);
+                         for (let i = 0; i < chunkLen; i++) {
+                             decryptedChunkBytes[i] = chunkData[i] ^ keystream[i];
+                         }
+                     } else {
+                          throw new Error("Direct (non-XOR) mode decryption is not supported in this demo.");
+                     }
 
-                        // Need inverse chaotic step or run forward and check, which is inefficient.
-                        // The provided Python code's direct mode decryption seems incorrect as it reverses steps
-                        // without knowing the inverse of `(state * prime) % modulus`.
-                        // A proper inverse requires modular multiplicative inverse, which exists only if gcd(prime, modulus) = 1.
-                        // Since modulus is 10^precision, this holds if prime is not 2 or 5.
-                        // Implementing modular inverse is complex.
-                        // **Due to the complexity and potential issues with the direct mode reversal,
-                        // this JS demo will focus on the XOR mode which is more standard and clearly reversible.**
-                        throw new Error("Direct mode decryption is complex and not fully implemented in this demo. Please use XOR mode.");
+                     try {
+                         // Use TextDecoder with fatal: true to catch decoding errors rigorously
+                         const decoder = new TextDecoder('utf-8', { fatal: true });
+                         decryptedAccumulator.push(decoder.decode(decryptedChunkBytes));
+                     } catch (e) {
+                         console.error(`UnicodeDecodeError during decryption of chunk ${chunkIndex}:`, e);
+                         throw new Error(`Decryption failed: Invalid UTF-8 sequence in chunk ${chunkIndex}. Possible wrong key or corrupted data.`);
+                     }
 
-                        // // Placeholder for conceptual reversal (likely incorrect without modular inverse)
-                        // for (let step = k - 1; step >= 0; step--) {
-                        //     // This is NOT the correct inverse operation for modular multiplication
-                        //     // state = this.chaoticStep(state, step); // Incorrect reversal attempt
-                        //     // Need: state = (state * modInverse(prime, modulus)) % modulus;
-                        // }
-                        // decryptedChunkBytes = bigIntToUint8Array(state); // Padding might be needed
-                    }
+                     chunkIndex += 1;
+                 }
 
-                    try {
-                        decryptedAccumulator.push(textDecoder.decode(decryptedChunkBytes));
-                    } catch (e) {
-                        console.error("UnicodeDecodeError during decryption:", e);
-                        throw new Error(`Decryption failed: Invalid UTF-8 sequence in chunk ${chunkIndex}. Possible wrong key or corrupted data.`);
-                    }
-
-                    chunkIndex += 1;
-                }
-
-                return decryptedAccumulator.join('');
-            }
+                 return decryptedAccumulator.join('');
+             }
         }
 
 
@@ -582,7 +618,7 @@
                 defaults: {
                     plaintext: '',
                     secret: '',
-                    macInput: '', // MAC provided by user for decryption
+                    macInput: '',
                     precision: 12,
                     primes: '9973',
                     chunkSize: 16,
@@ -627,7 +663,7 @@
                 },
 
                 render: function() {
-                    // Update form fields based on model state (e.g., on initial load)
+                    // Update form fields from model
                     this.$('#plaintext').val(this.model.get('plaintext'));
                     this.$('#secret').val(this.model.get('secret'));
                     this.$('#mac-input').val(this.model.get('macInput'));
@@ -655,15 +691,20 @@
                     const type = this.model.get('messageType');
                     const $messageArea = this.$('#message-area');
 
-                    $messageArea.text(message).removeClass('bg-green-100 text-green-700 bg-red-100 text-red-700 bg-yellow-100 text-yellow-700 bg-blue-100 text-blue-700'); // Clear previous styles
+                    // Define color classes for light and dark modes
+                    const styles = {
+                        success: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200',
+                        error:   'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200',
+                        warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200',
+                        info:    'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                    };
 
-                    if (message) {
-                        switch (type) {
-                            case 'success': $messageArea.addClass('bg-green-100 text-green-700'); break;
-                            case 'error': $messageArea.addClass('bg-red-100 text-red-700'); break;
-                            case 'warning': $messageArea.addClass('bg-yellow-100 text-yellow-700'); break;
-                            case 'info': $messageArea.addClass('bg-blue-100 text-blue-700'); break;
-                        }
+                    // Clear previous styles
+                    $messageArea.text(message).removeClass(Object.values(styles).join(' '));
+
+                    // Apply new styles if there's a message
+                    if (message && styles[type]) {
+                        $messageArea.addClass(styles[type]);
                     }
                 },
 
@@ -676,56 +717,68 @@
                     if (type === 'checkbox') {
                         value = $target.prop('checked');
                     } else if (type === 'number') {
-                        value = parseInt(value, 10);
-                         if (isNaN(value)) {
-                             // Handle invalid number input if necessary, maybe show a warning
-                             value = this.model.defaults[id]; // Reset to default or keep last valid?
-                         }
+                        const numValue = parseInt(value, 10);
+                        // Keep the value as string if empty, otherwise parse
+                        value = value === '' ? '' : (isNaN(numValue) ? this.model.defaults[this.camelCase(id)] : numValue);
                     }
 
-                    // Use silent: true to avoid multiple renders if many fields change quickly
+                    // Update model silently to prevent multiple renders if needed
                     this.model.set(this.camelCase(id), value, { silent: true });
-                    // Trigger a single change event after potential batch updates
-                    this.model.trigger('change', this.model, {});
+                    // Manually trigger change to ensure listeners update
+                    this.model.trigger('change:' + this.camelCase(id), this.model, value);
+                    this.model.trigger('change', this.model); // General change event
                 },
 
-                // Helper to convert kebab-case IDs to camelCase model attributes
                 camelCase: function(str) {
                     return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
                 },
 
-                 // Set UI state (disable buttons, show loading)
                  setLoading: function(isLoading) {
                     this.$('#encrypt-btn, #decrypt-btn').prop('disabled', isLoading);
                     if (isLoading) {
+                        // Use set to trigger renderMessage via listener
                         this.model.set({ message: 'Processing...', messageType: 'info' });
+                    } else {
+                         // Clear processing message only if it's the current message
+                         if (this.model.get('message') === 'Processing...') {
+                              this.model.set({ message: '', messageType: '' });
+                         }
                     }
                 },
 
-                // Validate inputs before processing
                 validateInputs: function(isEncrypt) {
                     const config = this.getConfig();
                     let errors = [];
 
-                    if (!config.sharedSecret) errors.push("Shared Secret is required.");
+                    if (!config.sharedSecret && (config.useMac || config.useDynamicK)) errors.push("Shared Secret is required when MAC or Dynamic K is enabled.");
                     if (isEncrypt && !config.plaintext) errors.push("Plaintext cannot be empty for encryption.");
                     if (!isEncrypt && !config.plaintext) errors.push("Ciphertext cannot be empty for decryption.");
-                    if (!isEncrypt && config.useMac && !config.macInput) errors.push("MAC value is required for verified decryption.");
-                    if (isNaN(config.precision) || config.precision < 1 || config.precision > 100) errors.push("Precision must be between 1 and 100.");
-                    if (isNaN(config.chunkSize) || config.chunkSize < 1 || config.chunkSize > 1024) errors.push("Chunk Size must be between 1 and 1024.");
-                    if (isNaN(config.baseK) || config.baseK < 1 || config.baseK > 100) errors.push("Base K must be between 1 and 100.");
-                    if (!config.primes || config.primes.length === 0) errors.push("At least one Prime number is required.");
-                    config.primes.forEach(p => {
-                        if (isNaN(p) || p < 2) errors.push(`Invalid prime number found: ${p}. Primes must be integers > 1.`);
-                    });
+
+                    // Require MAC input only if MAC is enabled for decryption
+                    if (!isEncrypt && config.useMac && !config.macInput) errors.push("MAC value is required for verified decryption when MAC is enabled.");
+
+                    if (typeof config.precision !== 'number' || isNaN(config.precision) || config.precision < 1 || config.precision > 100) errors.push("Precision must be a number between 1 and 100.");
+                    if (typeof config.chunkSize !== 'number' || isNaN(config.chunkSize) || config.chunkSize < 1 || config.chunkSize > 1024) errors.push("Chunk Size must be a number between 1 and 1024.");
+                    if (typeof config.baseK !== 'number' || isNaN(config.baseK) || config.baseK < 1 || config.baseK > 100) errors.push("Base K must be a number between 1 and 100.");
+
+                    if (!Array.isArray(config.primes) || config.primes.length === 0) {
+                         errors.push("At least one valid Prime number is required.");
+                    } else {
+                        config.primes.forEach((p, index) => {
+                             // Check if original input was valid before parsing
+                             const originalPrimeInput = this.model.get('primes').split(',')[index]?.trim();
+                            if (typeof p !== 'number' || isNaN(p) || p < 2) errors.push(`Invalid prime number found: '${originalPrimeInput || ''}'. Primes must be integers > 1.`);
+                        });
+                    }
+
                      if (!isEncrypt) {
                          try {
                              hexToUint8Array(config.plaintext); // Check if ciphertext is valid hex
                          } catch (e) {
-                             errors.push("Ciphertext must be a valid hexadecimal string.");
+                             errors.push(`Ciphertext Error: ${e.message}. Must be a valid hexadecimal string.`);
                          }
                      }
-                      if (!isEncrypt && config.macInput) {
+                      if (!isEncrypt && config.macInput) { // Validate MAC format only if provided
                          try {
                              BigInt(config.macInput); // Check if MAC is a valid integer representation
                          } catch (e) {
@@ -733,29 +786,38 @@
                          }
                      }
                      if (!config.useXor) {
-                          errors.push("Direct (non-XOR) mode is not fully supported in this demo due to decryption complexities. Please enable 'Use XOR'.");
+                          errors.push("Direct (non-XOR) mode is not supported in this demo. Please enable 'Use XOR'.");
                      }
 
 
                     if (errors.length > 0) {
+                        // Use set to trigger renderMessage
                         this.model.set({ message: errors.join(' '), messageType: 'error' });
                         return false;
+                    }
+                    // Clear previous errors if validation passes
+                    if (this.model.get('messageType') === 'error') {
+                         this.model.set({ message: '', messageType: '' });
                     }
                     return true;
                 },
 
 
-                // Get configuration object from the model
                 getConfig: function() {
                     const primeString = this.model.get('primes').trim();
-                    const primes = primeString ? primeString.split(',').map(p => parseInt(p.trim(), 10)).filter(n => !isNaN(n)) : [];
+                    // Parse primes, ensuring they are numbers
+                    const primes = primeString
+                        ? primeString.split(',')
+                              .map(p => parseInt(p.trim(), 10))
+                              // Keep NaN for validation step, filter later if needed
+                        : [];
 
                     return {
                         plaintext: this.model.get('plaintext'),
                         sharedSecret: this.model.get('secret'),
                         macInput: this.model.get('macInput'),
                         precision: this.model.get('precision'),
-                        primes: primes,
+                        primes: primes, // Keep potentially invalid numbers for validation
                         chunkSize: this.model.get('chunkSize'),
                         baseK: this.model.get('baseK'),
                         useDynamicK: this.model.get('useDynamicK'),
@@ -766,16 +828,20 @@
                 },
 
                 encryptText: async function() {
-                    this.model.set({ outputText: '', outputMac: '', message: '', messageType: '' }); // Clear previous results
+                    this.model.set({ outputText: '', outputMac: ''}); // Clear previous output immediately
                     if (!this.validateInputs(true)) return;
 
                     this.setLoading(true);
                     const config = this.getConfig();
+                     // Filter out invalid primes *after* validation
+                     const validPrimesConfig = { ...config, primes: config.primes.filter(p => !isNaN(p) && p >= 2) };
+
 
                     try {
-                        const encryptor = new ChaosEncryptJS(config);
-                        const { ciphertext, mac } = await encryptor.encrypt(config.plaintext);
+                        const encryptor = new ChaosEncryptJS(validPrimesConfig);
+                        const { ciphertext, mac } = await encryptor.encrypt(config.plaintext); // Use original plaintext
 
+                        // Use set to trigger render methods
                         this.model.set({
                             outputText: bufferToHex(ciphertext),
                             outputMac: mac || (config.useMac ? 'MAC calculation failed' : 'MAC disabled'),
@@ -785,7 +851,7 @@
                     } catch (error) {
                         console.error("Encryption Error:", error);
                         this.model.set({
-                            outputText: '',
+                            outputText: '', // Clear output on error
                             outputMac: '',
                             message: `Encryption failed: ${error.message}`,
                             messageType: 'error'
@@ -796,30 +862,35 @@
                 },
 
                 decryptText: async function() {
-                     this.model.set({ outputText: '', outputMac: '', message: '', messageType: '' }); // Clear previous results
+                     this.model.set({ outputText: '', outputMac: ''}); // Clear previous output
                      if (!this.validateInputs(false)) return;
 
                      this.setLoading(true);
-                     const config = this.getConfig(); // Includes macInput
+                     const config = this.getConfig();
+                     const validPrimesConfig = { ...config, primes: config.primes.filter(p => !isNaN(p) && p >= 2) };
+
 
                      try {
-                         const ciphertextHex = config.plaintext; // Input field holds ciphertext hex for decryption
+                         const ciphertextHex = config.plaintext; // Input field holds ciphertext hex
                          const ciphertextBytes = hexToUint8Array(ciphertextHex);
 
-                         const decryptor = new ChaosEncryptJS(config);
-                         const decryptedText = await decryptor.decrypt(ciphertextBytes, config.macInput || null); // Pass MAC input
+                         const decryptor = new ChaosEncryptJS(validPrimesConfig);
+                         const decryptedText = await decryptor.decrypt(ciphertextBytes, config.macInput || null);
 
                          this.model.set({
                              outputText: decryptedText,
-                             outputMac: config.macInput ? 'MAC verified (if enabled)' : (config.useMac ? 'MAC not provided' : 'MAC disabled'), // Provide feedback
+                             // Provide clearer MAC feedback
+                             outputMac: config.useMac
+                                        ? (config.macInput ? 'MAC verified' : 'MAC check skipped (no input)')
+                                        : 'MAC disabled',
                              message: 'Decryption successful!',
                              messageType: 'success'
                          });
                      } catch (error) {
                          console.error("Decryption Error:", error);
                          this.model.set({
-                             outputText: '',
-                             outputMac: '', // Clear MAC output on error
+                             outputText: '', // Clear output on error
+                             outputMac: '',
                              message: `Decryption failed: ${error.message}`,
                              messageType: 'error'
                          });
