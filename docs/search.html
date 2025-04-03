@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypted Search Demo (ChaosEncrypt)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.5.0/backbone-min.js"></script>
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons';
+        font-style: normal; font-weight: normal; font-variant: normal;
+        text-transform: none; line-height: 1;
+        -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+        display: inline-block; vertical-align: middle;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        @apply bg-gray-50 dark:bg-gray-900 transition-colors duration-300;
+      }
+      /* Custom scrollbar */
+      textarea::-webkit-scrollbar, .scrollable-list::-webkit-scrollbar { width: 8px; }
+      textarea::-webkit-scrollbar-track, .scrollable-list::-webkit-scrollbar-track { @apply bg-gray-200 dark:bg-gray-700 rounded-lg; }
+      textarea::-webkit-scrollbar-thumb, .scrollable-list::-webkit-scrollbar-thumb { @apply bg-gray-400 dark:bg-gray-500 rounded-lg border-2 border-solid border-gray-200 dark:border-gray-700; }
+      textarea::-webkit-scrollbar-thumb:hover, .scrollable-list::-webkit-scrollbar-thumb:hover { @apply bg-gray-500 dark:bg-gray-400; }
+      /* Style for disabled buttons */
+      button:disabled { cursor: not-allowed; opacity: 0.6; }
+      /* Ensure space for message */
+      #status-message { min-height: 2.5rem; transition: all 0.3s ease-in-out; }
+      /* Ensure icons in buttons don't prevent clicks */
+      button .lucide { pointer-events: none; }
+      /* Fixed height scrollable list */
+      .scrollable-list { max-height: 200px; overflow-y: auto; }
+    </style>
+    <script>
+        // Tailwind dark mode configuration
+        tailwind.config = {
+          darkMode: 'class',
+          theme: { extend: {} }
+        }
+      </script>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="search-app-container" class="max-w-5xl mx-auto bg-white dark:bg-gray-800 p-6 md:p-8 rounded-xl shadow-lg transition-colors duration-300">
+        <header class="mb-6 md:mb-8 text-center relative">
+            <button id="theme-toggle" type="button" class="absolute top-0 right-0 p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm">
+                <span id="theme-toggle-dark-icon" class="lucide hidden" style="font-size: 1.25rem;">&#xe9a5;</span> <span id="theme-toggle-light-icon" class="lucide hidden" style="font-size: 1.25rem;">&#xeae3;</span> </button>
+
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center justify-center space-x-2">
+                 <span class="lucide text-blue-600" style="font-size: 2rem;">&#xea1a;</span> <span>Encrypted Search Demo</span>
+            </h1>
+            <p class="text-gray-600 dark:text-gray-400">Demonstrating prefix search on ChaosEncrypt ciphertexts.</p>
+        </header>
+
+        <div id="status-message" class="mb-4 p-3 rounded-lg text-sm font-medium text-center transition-colors duration-300">
+            </div>
+
+        <div class="mb-6 p-4 border dark:border-gray-600 rounded-lg">
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">Configuration</h2>
+            <label for="shared-secret" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Shared Secret</label>
+            <input type="password" id="shared-secret" class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm">
+            <p class="mt-2 text-xs text-orange-600 dark:text-orange-400 font-semibold">
+                <span class="lucide mr-1" style="font-size: 0.75rem; vertical-align: text-top;">&#xe868;</span> Warning: For demo purposes only. Storing secrets in localStorage is insecure.
+            </p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Primes fixed to: 9973, 3799. Other parameters use defaults (Precision=12, Chunk=16, BaseK=6, DynamicK=true, XOR=true, MAC=true, EmbedLength=true).</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-600 pb-2 mb-4">1. Add Encrypted Messages</h2>
+                <div>
+                    <label for="new-message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Message Plaintext</label>
+                    <textarea id="new-message" rows="3" placeholder="Enter message to encrypt and store..." class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm resize-none dark:placeholder-gray-400"></textarea>
+                </div>
+                <button id="add-encrypt-btn" class="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+                    <span class="lucide mr-2">&#xea7f;</span> Add & Encrypt
+                </button>
+
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200 pt-4">Stored Encrypted Messages</h3>
+                <div id="stored-messages-list" class="scrollable-list space-y-2 p-3 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm italic">No messages stored yet.</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-600 pb-2 mb-4">2. Search Encrypted Messages</h2>
+                <div>
+                    <label for="search-prefix" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Prefix Plaintext</label>
+                    <input type="text" id="search-prefix" placeholder="Enter prefix to search for..." class="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:border-blue-500 transition duration-150 ease-in-out shadow-sm dark:placeholder-gray-400">
+                </div>
+                 <button id="search-btn" class="w-full inline-flex justify-center items-center px-6 py-3 border border-gray-300 dark:border-gray-500 text-base font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+                     <span class="lucide mr-2">&#xea1a;</span> Search Encrypted Data
+                </button>
+
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200 pt-4">Search Results (Matching Ciphertexts)</h3>
+                <div id="search-results-list" class="scrollable-list space-y-2 p-3 border dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm italic">Enter a prefix and click search.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p>ChaosEncrypt Search Demo. Demonstrates prefix search by exploiting deterministic chunk encryption.</p>
+            <p class="text-xs text-orange-600 dark:text-orange-400">Note: This determinism leaks information (prefix equality) and is not typical of secure encryption schemes.</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Dark Mode Handler (same as previous demo) ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const htmlElement = document.documentElement;
+
+        function setTheme(isDark) {
+            if (isDark) {
+                htmlElement.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
+                localStorage.setItem('color-theme', 'dark');
+            } else {
+                htmlElement.classList.remove('dark');
+                themeToggleDarkIcon.classList.remove('hidden');
+                themeToggleLightIcon.classList.add('hidden');
+                localStorage.setItem('color-theme', 'light');
+            }
+        }
+
+        const storedTheme = localStorage.getItem('color-theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (storedTheme === 'dark' || (!storedTheme && prefersDark)) {
+            setTheme(true);
+        } else {
+            setTheme(false);
+        }
+        themeToggleBtn.addEventListener('click', () => {
+            setTheme(!htmlElement.classList.contains('dark'));
+        });
+
+        // --- Polyfills and Helpers (same as previous demo) ---
+        const textEncoder = new TextEncoder();
+        const textDecoder = new TextDecoder();
+
+        function bufferToHex(buffer) {
+             const uint8Array = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+            return Array.prototype.map.call(uint8Array, x => ('00' + x.toString(16)).slice(-2)).join('');
+        }
+
+        function hexToUint8Array(hexString) {
+            if (typeof hexString !== 'string') throw new Error("Input must be a string.");
+            if (hexString.length % 2 !== 0) throw new Error("Invalid hex string length.");
+            const cleanHexString = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+             if (!/^[0-9a-fA-F]*$/.test(cleanHexString)) throw new Error("Invalid characters in hex string.");
+            const byteArray = new Uint8Array(cleanHexString.length / 2);
+            for (let i = 0; i < byteArray.length; i++) {
+                byteArray[i] = parseInt(cleanHexString.substr(i * 2, 2), 16);
+            }
+            return byteArray;
+        }
+        function bufferToBigInt(buffer) {
+             const uint8Array = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+            const hex = bufferToHex(uint8Array);
+            if (hex.length === 0) return BigInt(0);
+            return BigInt(`0x${hex}`);
+        }
+        function bigIntToUint8Array(bigIntValue) {
+            if (typeof bigIntValue !== 'bigint') throw new Error("Input must be a BigInt.");
+            if (bigIntValue < 0) throw new Error("Cannot convert negative BigInt to Uint8Array");
+            if (bigIntValue === BigInt(0)) return new Uint8Array(0);
+            let hex = bigIntValue.toString(16);
+            if (hex.length % 2) { hex = '0' + hex; }
+            return hexToUint8Array(hex);
+        }
+        const MAC_PRIME = BigInt("1" + "0".repeat(64) + "67");
+
+        // --- ChaosEncrypt Logic (Copied from previous demo, ensure it's available) ---
+        class ChaosEncryptJS {
+             constructor(config) {
+                // Simplified validation for demo
+                this.precision = config.precision || 12;
+                this.modulus = BigInt(10) ** BigInt(this.precision);
+                this.primes = (config.primes || [9973]).map(p => BigInt(p));
+                if (this.primes.length === 0) throw new Error("Primes array cannot be empty.");
+                this.sharedSecret = config.sharedSecret || "";
+                this.chunkSize = config.chunkSize || 16;
+                this.baseK = config.baseK || 6;
+                this.useDynamicK = config.useDynamicK !== undefined ? config.useDynamicK : true;
+                this.useXor = config.useXor !== undefined ? config.useXor : true;
+                this.useMac = config.useMac !== undefined ? config.useMac : true;
+                this.embedLength = config.embedLength !== undefined ? config.embedLength : true;
+                this.hmacKey = null;
+            }
+
+             async initHmacKey() {
+                if (!this.hmacKey && this.sharedSecret) {
+                    try {
+                        const keyData = textEncoder.encode(this.sharedSecret);
+                        this.hmacKey = await crypto.subtle.importKey(
+                            "raw", keyData, { name: "HMAC", hash: "SHA-256" },
+                            false, ["sign", "verify"]
+                        );
+                    } catch (e) { throw new Error(`Failed to initialize HMAC key: ${e.message}`); }
+                } else if (!this.sharedSecret && (this.useMac || this.useDynamicK)) {
+                     // Throw error later if actually needed and secret is missing
+                }
+            }
+
+            async deriveK(chunkIndex) {
+                if (!this.useDynamicK) return this.baseK;
+                if (!this.sharedSecret) throw new Error("Shared secret required for dynamic K.");
+                if (!this.hmacKey) await this.initHmacKey();
+                try {
+                    const indexData = textEncoder.encode(String(chunkIndex));
+                    const hmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, indexData);
+                    const hmacBytes = new Uint8Array(hmacBuffer.slice(0, 4));
+                    const dataView = new DataView(hmacBytes.buffer);
+                    const derivedInt = dataView.getUint32(0, false);
+                    return Math.max(this.baseK + (derivedInt % 50), 1);
+                } catch (e) { throw new Error(`Failed to derive K: ${e.message}`); }
+            }
+
+            async calculateMac(data) {
+                if (!this.useMac) return null;
+                if (!this.sharedSecret) throw new Error("Shared secret required for MAC calculation.");
+                if (!(data instanceof Uint8Array)) throw new Error("Data must be Uint8Array for MAC.");
+                if (!this.hmacKey) await this.initHmacKey();
+                try {
+                    const hmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, data);
+                    return bufferToBigInt(hmacBuffer) % MAC_PRIME;
+                } catch (e) { throw new Error(`MAC calculation failed: ${e.message}`); }
+            }
+
+            // MAC verification not needed for this demo's core functionality
+            // async verifyMac(data, receivedMacStr) { ... }
+
+            chaoticStep(state, step) {
+                const prime = this.primes[step % this.primes.length];
+                return (state * prime) % this.modulus;
+            }
+
+            generateKeystream(length, seedBigInt, k) {
+                if (length <= 0) return new Uint8Array(0);
+                let state = seedBigInt;
+                for (let step = 0; step < k; step++) {
+                    state = this.chaoticStep(state, step);
+                }
+                const keystream = new Uint8Array(length);
+                let tempState = state;
+                for (let i = 0; i < length; i++) {
+                    keystream[i] = Number(tempState % 256n);
+                    tempState = this.chaoticStep(tempState, k + i); // Continue stepping
+                }
+                return keystream;
+            }
+
+             _splitIntoChunks(text) {
+                 // Simplified chunking for demo - assumes UTF8 chars fit within chunksize
+                 const chunks = [];
+                 const bytes = textEncoder.encode(text);
+                 for (let i = 0; i < bytes.length; i += this.chunkSize) {
+                     const chunkBytes = bytes.slice(i, i + this.chunkSize);
+                     // Decode back to string for consistency if needed, or keep as bytes
+                     chunks.push(textDecoder.decode(chunkBytes));
+                 }
+                 return chunks.filter(c => c.length > 0);
+             }
+
+            async encrypt(plaintext) {
+                if (!this.sharedSecret && (this.useMac || this.useDynamicK)) {
+                    throw new Error("Shared secret cannot be empty when MAC or Dynamic K is enabled.");
+                }
+                 // Ensure key is ready *before* loop if needed
+                 if (this.sharedSecret) await this.initHmacKey();
+
+                const chunks = this._splitIntoChunks(plaintext);
+                const ciphertextAccumulator = [];
+                let chunkIndex = 0;
+
+                for (const chunkStr of chunks) {
+                    const chunkBytes = textEncoder.encode(chunkStr);
+                    if (chunkBytes.length === 0) continue;
+
+                    const k = await this.deriveK(chunkIndex);
+
+                    let seedBigInt;
+                     if (this.sharedSecret) {
+                         const indexData = textEncoder.encode(String(chunkIndex));
+                         // Ensure key is initialized before signing
+                         if (!this.hmacKey) throw new Error("HMAC key not initialized.");
+                         const seedHmacBuffer = await crypto.subtle.sign("HMAC", this.hmacKey, indexData);
+                         seedBigInt = bufferToBigInt(new Uint8Array(seedHmacBuffer.slice(0, 8))) % this.modulus;
+                     } else {
+                         // Insecure fallback only if no secret AND no dynamic K/MAC
+                         seedBigInt = BigInt(chunkIndex * 997) % this.modulus;
+                         console.warn("Encrypting without shared secret. Using insecure fallback seed.");
+                     }
+
+
+                    if (!this.useXor) throw new Error("Only XOR mode is supported in this demo.");
+
+                    const keystream = this.generateKeystream(chunkBytes.length, seedBigInt, k);
+                    const encryptedChunkBytes = new Uint8Array(chunkBytes.length);
+                    for (let i = 0; i < chunkBytes.length; i++) {
+                        encryptedChunkBytes[i] = chunkBytes[i] ^ keystream[i];
+                    }
+
+                    if (this.embedLength) {
+                        if (encryptedChunkBytes.length > 65535) throw new Error("Chunk size exceeds max embeddable length.");
+                        const lengthBuffer = new ArrayBuffer(2);
+                        new DataView(lengthBuffer).setUint16(0, encryptedChunkBytes.length, false);
+                        ciphertextAccumulator.push(new Uint8Array(lengthBuffer));
+                    }
+                    ciphertextAccumulator.push(encryptedChunkBytes);
+                    chunkIndex += 1;
+                }
+
+                // Concatenate chunks
+                const totalLength = ciphertextAccumulator.reduce((sum, arr) => sum + arr.length, 0);
+                const finalCiphertext = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const arr of ciphertextAccumulator) {
+                    finalCiphertext.set(arr, offset);
+                    offset += arr.length;
+                }
+
+                const mac = await this.calculateMac(finalCiphertext);
+                return { ciphertext: finalCiphertext, mac: mac !== null ? mac.toString() : null };
+            }
+             // Decrypt function not strictly needed for this demo's core path
+             // async decrypt(ciphertext, macStr) { ... }
+        }
+
+
+        // --- Backbone Application ---
+        $(document).ready(function() {
+
+            // Backbone Model
+            const SearchDemoModel = Backbone.Model.extend({
+                defaults: {
+                    sharedSecret: '',
+                    // Store messages as objects { id: uniqueId, plaintext: string, ciphertextHex: string, mac: string|null }
+                    messages: [],
+                    currentMessage: '',
+                    searchPrefix: '',
+                    // Store results as array of matching message objects
+                    searchResults: [],
+                    statusMessage: '',
+                    statusType: '' // 'success', 'error', 'warning', 'info'
+                },
+                // Load secret from localStorage on init
+                initialize: function() {
+                    this.set('sharedSecret', localStorage.getItem('chaosSearchSecret') || '');
+                    // Load messages if needed (for persistence, not implemented here)
+                }
+            });
+
+            // Backbone View
+            const SearchView = Backbone.View.extend({
+                el: '#search-app-container',
+
+                events: {
+                    'input #shared-secret': 'updateSecret',
+                    'click #add-encrypt-btn': 'addAndEncryptMessage',
+                    'click #search-btn': 'searchMessages',
+                    'input #new-message': 'updateCurrentMessage',
+                    'input #search-prefix': 'updateSearchPrefix'
+                },
+
+                initialize: function() {
+                    this.model = new SearchDemoModel();
+                    // Listeners to update UI
+                    this.listenTo(this.model, 'change:sharedSecret', this.handleSecretChange);
+                    this.listenTo(this.model, 'change:messages', this.renderStoredMessages);
+                    this.listenTo(this.model, 'change:searchResults', this.renderSearchResults);
+                    this.listenTo(this.model, 'change:statusMessage', this.renderStatusMessage);
+
+                    // Initial render based on model defaults (including loaded secret)
+                    this.$('#shared-secret').val(this.model.get('sharedSecret'));
+                    this.renderStoredMessages();
+                    this.renderSearchResults();
+                    this.renderStatusMessage();
+
+                    // Initialize encryptor instance (will be updated on secret change)
+                    this.updateEncryptorInstance();
+                },
+
+                // Update the ChaosEncryptJS instance when config changes
+                updateEncryptorInstance: function() {
+                    const secret = this.model.get('sharedSecret');
+                    if (!secret) {
+                         this.encryptor = null; // Cannot encrypt/decrypt without secret
+                         return;
+                    }
+                    try {
+                         this.encryptor = new ChaosEncryptJS({
+                            sharedSecret: secret,
+                            primes: [9973, 3799], // Fixed primes for this demo
+                            // Using defaults matching previous demo for consistency
+                            precision: 12,
+                            chunkSize: 16,
+                            baseK: 6,
+                            useDynamicK: true,
+                            useXor: true,
+                            useMac: true, // Keep MAC for completeness, though not verified here
+                            embedLength: true
+                        });
+                         // Pre-initialize HMAC key if secret exists
+                         this.encryptor.initHmacKey().catch(e => {
+                             console.error("HMAC Key init failed:", e);
+                             this.model.set({ statusMessage: `Error initializing crypto: ${e.message}`, statusType: 'error' });
+                             this.encryptor = null; // Invalidate encryptor on key error
+                         });
+                    } catch(e) {
+                         console.error("Error creating ChaosEncryptJS instance:", e);
+                         this.model.set({ statusMessage: `Config Error: ${e.message}`, statusType: 'error' });
+                         this.encryptor = null;
+                    }
+                },
+
+                // Update secret in model and localStorage
+                updateSecret: function(e) {
+                    const newSecret = $(e.currentTarget).val();
+                    this.model.set('sharedSecret', newSecret);
+                },
+
+                // Handle secret changes (update localStorage, re-init encryptor)
+                handleSecretChange: function() {
+                    const secret = this.model.get('sharedSecret');
+                    localStorage.setItem('chaosSearchSecret', secret);
+                    this.updateEncryptorInstance(); // Re-initialize with new secret
+                    // Optionally clear messages/results if secret changes? For demo, maybe not.
+                    this.model.set({ statusMessage: 'Secret updated.', statusType: 'info' });
+                },
+
+                updateCurrentMessage: function(e) {
+                    this.model.set('currentMessage', $(e.currentTarget).val());
+                },
+
+                updateSearchPrefix: function(e) {
+                    this.model.set('searchPrefix', $(e.currentTarget).val());
+                },
+
+                // Render the list of stored encrypted messages
+                renderStoredMessages: function() {
+                    const messages = this.model.get('messages');
+                    const $list = this.$('#stored-messages-list');
+                    $list.empty(); // Clear previous list
+
+                    if (messages.length === 0) {
+                        $list.append('<p class="text-gray-500 dark:text-gray-400 text-sm italic">No messages stored yet.</p>');
+                        return;
+                    }
+
+                    messages.forEach(msg => {
+                        // Simple display for demo: Plaintext (for context) + Ciphertext
+                         const itemHtml = `
+                            <div class="p-2 border-b dark:border-gray-600 last:border-b-0">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 break-words">PT: ${_.escape(msg.plaintext)}</p>
+                                <p class="text-sm font-mono break-all text-blue-700 dark:text-blue-400">${msg.ciphertextHex}</p>
+                                ${msg.mac ? `<p class="text-xs text-gray-400 dark:text-gray-500 font-mono truncate">MAC: ${msg.mac}</p>` : ''}
+                            </div>
+                        `;
+                        $list.append(itemHtml);
+                    });
+                },
+
+                 // Render the list of search results
+                 renderSearchResults: function() {
+                    const results = this.model.get('searchResults'); // Array of message objects
+                    const $list = this.$('#search-results-list');
+                    $list.empty();
+
+                     if (!this.model.get('searchPrefix')) {
+                         $list.append('<p class="text-gray-500 dark:text-gray-400 text-sm italic">Enter a prefix and click search.</p>');
+                         return;
+                     }
+
+                    if (results.length === 0) {
+                        $list.append('<p class="text-gray-500 dark:text-gray-400 text-sm italic">No matching encrypted messages found.</p>');
+                        return;
+                    }
+
+                    results.forEach(msg => {
+                        // Display matching messages similarly to stored list
+                         const itemHtml = `
+                            <div class="p-2 border-b dark:border-gray-600 last:border-b-0">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 break-words">PT: ${_.escape(msg.plaintext)}</p>
+                                <p class="text-sm font-mono break-all text-green-700 dark:text-green-400">${msg.ciphertextHex}</p>
+                                ${msg.mac ? `<p class="text-xs text-gray-400 dark:text-gray-500 font-mono truncate">MAC: ${msg.mac}</p>` : ''}
+                            </div>
+                        `;
+                        $list.append(itemHtml);
+                    });
+                },
+
+                 // Render status messages (success, error, info)
+                 renderStatusMessage: function() {
+                    const message = this.model.get('statusMessage');
+                    const type = this.model.get('statusType');
+                    const $messageArea = this.$('#status-message');
+                    const styles = {
+                        success: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200',
+                        error:   'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200',
+                        warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200',
+                        info:    'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                    };
+                    $messageArea.text(message).removeClass(Object.values(styles).join(' '));
+                    if (message && styles[type]) {
+                        $messageArea.addClass(styles[type]);
+                    }
+                },
+
+                // Set loading state for buttons
+                setLoading: function(buttonId, isLoading) {
+                    this.$(`#${buttonId}`).prop('disabled', isLoading);
+                    // Optional: Add visual loading indicator
+                },
+
+                // Encrypt and add message to the list
+                addAndEncryptMessage: async function() {
+                    const plaintext = this.model.get('currentMessage').trim();
+                    if (!plaintext) {
+                        this.model.set({ statusMessage: 'Please enter a message to encrypt.', statusType: 'warning' });
+                        return;
+                    }
+                    if (!this.encryptor) {
+                         this.model.set({ statusMessage: 'Cannot encrypt. Please set a valid shared secret.', statusType: 'error' });
+                         return;
+                    }
+
+                    this.setLoading('add-encrypt-btn', true);
+                    this.model.set({ statusMessage: 'Encrypting...', statusType: 'info' });
+
+                    try {
+                        const { ciphertext, mac } = await this.encryptor.encrypt(plaintext);
+                        const ciphertextHex = bufferToHex(ciphertext);
+                        const newMessage = {
+                            id: _.uniqueId('msg_'), // Simple unique ID for demo
+                            plaintext: plaintext,
+                            ciphertextHex: ciphertextHex,
+                            mac: mac
+                        };
+
+                        const currentMessages = this.model.get('messages');
+                        // Use set to trigger 'change:messages' event
+                        this.model.set('messages', [...currentMessages, newMessage]);
+
+                        this.model.set({
+                            currentMessage: '', // Clear input field
+                            statusMessage: 'Message encrypted and stored!',
+                            statusType: 'success'
+                        });
+                         this.$('#new-message').val(''); // Clear textarea manually
+
+                    } catch (error) {
+                        console.error("Encryption Error:", error);
+                        this.model.set({ statusMessage: `Encryption failed: ${error.message}`, statusType: 'error' });
+                    } finally {
+                        this.setLoading('add-encrypt-btn', false);
+                    }
+                },
+
+                 // Search stored messages based on encrypted prefix
+                 searchMessages: async function() {
+                    const searchPrefixPlaintext = this.model.get('searchPrefix').trim();
+                     if (!searchPrefixPlaintext) {
+                         this.model.set({ statusMessage: 'Please enter a search prefix.', statusType: 'warning' });
+                         // Clear previous results when prefix is empty
+                         this.model.set('searchResults', []);
+                         return;
+                     }
+                     if (!this.encryptor) {
+                         this.model.set({ statusMessage: 'Cannot search. Please set a valid shared secret.', statusType: 'error' });
+                         return;
+                     }
+
+                     this.setLoading('search-btn', true);
+                     this.model.set({ statusMessage: 'Encrypting prefix and searching...', statusType: 'info' });
+
+                     try {
+                         // Encrypt the search prefix to get the target ciphertext prefix
+                         // Note: We encrypt the *whole* prefix string. The comparison later
+                         // will inherently work because if plaintexts match up to length N,
+                         // the deterministic encryption ensures ciphertexts match up to the
+                         // corresponding ciphertext length (including chunk boundaries/prefixes).
+                         const { ciphertext: prefixCiphertext } = await this.encryptor.encrypt(searchPrefixPlaintext);
+                         const prefixCiphertextHex = bufferToHex(prefixCiphertext);
+
+                         const storedMessages = this.model.get('messages');
+                         const matchingMessages = storedMessages.filter(msg => {
+                             // Check if the stored message's ciphertext starts with the *entire*
+                             // encrypted prefix's ciphertext. This works because of the
+                             // deterministic nature and embedded length fields.
+                             return msg.ciphertextHex.startsWith(prefixCiphertextHex);
+                         });
+
+                         // Use set to trigger 'change:searchResults'
+                         this.model.set('searchResults', matchingMessages);
+                         this.model.set({
+                             statusMessage: `Search complete. Found ${matchingMessages.length} match(es).`,
+                             statusType: 'success'
+                         });
+
+                     } catch (error) {
+                         console.error("Search Error:", error);
+                         this.model.set({
+                             statusMessage: `Search failed: ${error.message}`,
+                             statusType: 'error',
+                             searchResults: [] // Clear results on error
+                         });
+                     } finally {
+                         this.setLoading('search-btn', false);
+                     }
+                 }
+
+            });
+
+            // Initialize the application
+            new SearchView();
+        });
+    </script>
+
+</body>
+</html>
+
