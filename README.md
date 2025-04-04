@@ -29,6 +29,9 @@
 
 **Use for exploration, insight, and experimentation—not production security.**
 
+[DEMO:](https://sethuiyer.github.io/chaosencrypt/)
+[CIPHERTEXT AUTOCOMPLETE WITH KNOWN SHARED SECRET:](https://sethuiyer.github.io/chaosencrypt/search.html)
+
 ---
 
 ## 🚀 Core Concepts
@@ -91,7 +94,7 @@ While initial explorations used a simple sum-based MAC (`Σ(ciphertextValues) + 
 
 ### 🤝 Chaotic Structural Echo (CSE)
 
-An unexpected finding during early exploration with simpler configurations was the 'Chaotic Structural Echo' (CSE) – a tendency for ciphertexts of structurally similar plaintexts to cluster when analyzed (e.g., via cosine similarity). However, rigorous testing reveals this effect is significantly **attenuated or disrupted** when employing the recommended security enhancements (HMAC-based seeding/KDF, dynamic k). Quantitative tests often fail to show strong clustering under these modes. This suggests the enhanced layering is effectively increasing obfuscation, moving the system closer to standard cryptographic goals by suppressing latent structural information leakage. The study of CSE under varying parameters remains an interesting research avenue into the interplay of chaos and structure.
+An unexpected finding during early exploration with simpler configurations was the 'Chaotic Structural Echo' (CSE) – a tendency for ciphertexts of structurally similar plaintexts to cluster when analyzed (e.g., via cosine similarity). However, rigorous testing reveals this effect is significantly **attenuated or disrupted** when employing the recommended security enhancements (HMAC-based seeding/KDF, dynamic k). Quantitative tests often fail to show strong clustering under these modes. This suggests the enhanced layering is effectively increasing obfuscation, moving the system closer to standard cryptographic goals by suppressing latent structural information leakage. The study of CSE under varying parameters remains an interesting research avenue into the interplay of chaos and structure. Note that this is only observed when two messages are encrypted using same prime numbers, same k, same shared secret, which in that case, might be a useful behaviour.
 
 ### 🧪 1. **NIST Statistical Tests**
 
