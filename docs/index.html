@@ -11,23 +11,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.5.0/backbone-min.js"></script>
     <style>
-      @font-face {
-        font-family: 'LucideIcons';
-        /* Updated CDN link for stability */
-        src: url(https://unpkg.com/lucide-static@latest/font/Lucide.ttf) format('truetype');
-      }
-      .lucide {
-        font-family: 'LucideIcons';
-        font-style: normal;
-        font-weight: normal;
-        font-variant: normal;
-        text-transform: none;
-        line-height: 1;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        display: inline-block;
-        vertical-align: middle;
-      }
+       #theme-toggle svg {
+    transition: transform 0.3s ease;
+  }
+  #theme-toggle:hover svg {
+    transform: rotate(20deg);
+  }
       /* Basic styles */
       body {
         font-family: 'Inter', sans-serif;
@@ -88,15 +77,22 @@
 
     <div id="app-container" class="max-w-4xl mx-auto bg-white dark:bg-gray-800 p-6 md:p-8 rounded-xl shadow-lg transition-colors duration-300">
         <header class="mb-6 md:mb-8 text-center relative">
-            <button id="theme-toggle" type="button" class="absolute top-0 right-0 p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm">
-                <span id="theme-toggle-dark-icon" class="lucide hidden" style="font-size: 1.25rem;">&#xe9a5;</span> <span id="theme-toggle-light-icon" class="lucide hidden" style="font-size: 1.25rem;">&#xeae3;</span> </button>
+<button id="theme-toggle" type="button" class="absolute top-0 right-0 p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm">
+        <!-- Use proper Lucide icons via data-lucide -->
+        <span id="theme-toggle-dark-icon" data-lucide="moon" class="hidden w-5 h-5"></span>
+        <span id="theme-toggle-light-icon" data-lucide="sun" class="hidden w-5 h-5"></span>
+      </button>
 
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center justify-center space-x-2">
-                 <span class="lucide" style="font-size: 2rem; color: #3b82f6;">&#xea6f;</span>
-                 <span>ChaosEncrypt Demo</span>
-            </h1>
-            <p class="text-gray-600 dark:text-gray-400">An interactive demo of the ChaosEncrypt algorithm.</p>
-        </header>
+      <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center justify-center space-x-2">
+        <span data-lucide="shield" class="w-8 h-8 text-blue-500"></span>
+        <span>ChaosEncrypt Demo</span>
+      </h1>
+
+      <p class="text-gray-600 dark:text-gray-400">
+        An interactive demo of the ChaosEncrypt algorithm.
+      </p>
+
+    </header>
 
         <div id="message-area" class="mb-4 p-3 rounded-lg text-sm font-medium text-center transition-colors duration-300">
             </div>
@@ -165,14 +161,16 @@
         </div>
 
         <div class="mt-6 md:mt-8 flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
-            <button id="encrypt-btn" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
-                <span class="lucide mr-2">&#xe86d;</span>
-                Encrypt
-            </button>
-            <button id="decrypt-btn" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-gray-300 dark:border-gray-500 text-base font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
-                 <span class="lucide mr-2">&#xeb1c;</span>
-                Decrypt
-            </button>
+		<button id='encrypt-btn' class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+  <span data-lucide="lock" class="mr-2"></span>
+  Encrypt
+</button>
+
+<button id='decrypt-btn' class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out">
+  <span data-lucide="unlock" class="mr-2"></span>
+  Decrypt
+</button>
+
         </div>
 
         <div class="mt-6 md:mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
@@ -195,43 +193,35 @@
     </div>
 
     <script>
-        // --- Dark Mode Handler ---
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-        const htmlElement = document.documentElement; // Get the <html> element
+	const themeToggleBtn = document.getElementById('theme-toggle');
+  const darkIcon = document.getElementById('theme-toggle-dark-icon');
+  const lightIcon = document.getElementById('theme-toggle-light-icon');
 
-        // Function to set theme
-        function setTheme(isDark) {
-            if (isDark) {
-                htmlElement.classList.add('dark');
-                themeToggleLightIcon.classList.remove('hidden');
-                themeToggleDarkIcon.classList.add('hidden');
-                localStorage.setItem('color-theme', 'dark');
-            } else {
-                htmlElement.classList.remove('dark');
-                themeToggleDarkIcon.classList.remove('hidden');
-                themeToggleLightIcon.classList.add('hidden');
-                localStorage.setItem('color-theme', 'light');
-            }
-        }
+  // Initialize theme state
+  if (localStorage.getItem('color-theme') === 'dark' || 
+      (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+    lightIcon.classList.remove('hidden');
+  } else {
+    document.documentElement.classList.remove('dark');
+    darkIcon.classList.remove('hidden');
+  }
 
-        // Check initial theme preference
-        const storedTheme = localStorage.getItem('color-theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // Toggle button
+  themeToggleBtn.addEventListener('click', function() {
+    // toggle icons
+    darkIcon.classList.toggle('hidden');
+    lightIcon.classList.toggle('hidden');
 
-        if (storedTheme === 'dark' || (!storedTheme && prefersDark)) {
-            setTheme(true);
-        } else {
-            setTheme(false); // Default to light
-        }
-
-        // Add listener for the toggle button
-        themeToggleBtn.addEventListener('click', () => {
-            setTheme(!htmlElement.classList.contains('dark'));
-        });
-
-
+    // toggle theme
+    if (document.documentElement.classList.contains('dark')) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('color-theme', 'light');
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('color-theme', 'dark');
+    }
+  });
         // --- Polyfills and Helpers ---
         const textEncoder = new TextEncoder();
         const textDecoder = new TextDecoder();
@@ -904,7 +894,10 @@
             new AppView();
         });
     </script>
-
+    <script src="https://cdn.jsdelivr.net/npm/lucide/dist/umd/lucide.min.js"></script>
+<script>
+  lucide.createIcons();
+</script>
 </body>
 </html>
 
